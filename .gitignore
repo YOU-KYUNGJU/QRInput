@@ -1,0 +1,21 @@
+# secrets
+config/*.local.ini
+config/*.secret.ini
+
+# runtime
+runtime/*.lock
+
+# logs
+logs/**/*.csv
+logs/**/*.txt
+logs/**/*.png
+dist/
+
+# editors
+.vscode/
+.idea/
+
+# temp
+*.tmp
+*.crdownload
+qrinput_codex_blueprint.zip

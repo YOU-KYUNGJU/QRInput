@@ -1,0 +1,3 @@
+log_date,run_id,schedule_time,team,source_file,file_count,row_count,success_count,failed_count,skipped_count,session_drop_count,relogin_count,row_retry_count,start_time,end_time,elapsed_sec,login_sec,qr_scan_sec,checkbox_sec,save_sec,longest_stage,note
+2026-04-11,example-001,06:55,분석화학평가팀,H1.csv,1,30,28,2,0,0,0,3,2026-04-11 06:55:02,2026-04-11 06:58:41,219,18,110,32,24,qr_scan,예시 데이터
+2026-04-11,example-002,11:55,가공성능평가팀,20260410_095128.csv,1,1,1,0,0,1,1,0,2026-04-11 11:55:03,2026-04-11 11:56:22,79,21,20,8,9,login,세션 재로그인 1회
