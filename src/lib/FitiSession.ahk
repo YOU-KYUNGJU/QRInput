@@ -46,7 +46,7 @@ EnsureLoggedIn(teamCfg, sysCfg, uiCfg) {
     WinActivate, % loginWindowRef
     WinWaitActive, % loginWindowRef, , 3
 
-    AppendDebug("login_begin", teamCfg.team_name . "|" . teamCfg.login_id)
+    AppendDebug("login_begin", teamCfg.team_name . "|" . MaskLoginValue(teamCfg.login_id))
 
     userOk := SetLoginFieldValue(loginWindowRef, uiCfg.login_user_control, teamCfg.login_id, true)
     passOk := SetLoginFieldValue(loginWindowRef, uiCfg.login_password_control, teamCfg.login_password, false)
@@ -89,34 +89,56 @@ EnsureLoggedIn(teamCfg, sysCfg, uiCfg) {
 
     if !WaitForWindow(sysCfg.main_window_title, 1, 1) {
         userText := SafeReadLoginField(loginWindowRef, uiCfg.login_user_control)
-        AppendDebug("login_main_timeout", teamCfg.team_name . "|user=" . userText . "|" . DescribeOpenFitiWindows(sysCfg))
+        AppendDebug("login_main_timeout", teamCfg.team_name . "|user=" . MaskLoginValue(userText) . "|" . DescribeOpenFitiWindows(sysCfg))
         return false
     }
     return false
 }
 
 EnsureQrWindow(sysCfg, uiCfg) {
-    if WinExist(sysCfg.qr_window_title)
+    if WinExist(sysCfg.qr_window_title) {
+        AppendDebug("qr_open_skip", "already_open")
         return true
-    if !WinExist(sysCfg.main_window_title)
+    }
+    if !WinExist(sysCfg.main_window_title) {
+        AppendDebug("qr_open_main_missing", DescribeOpenFitiWindows(sysCfg))
         return false
-
-    WinActivate, % sysCfg.main_window_title
-    WinWaitActive, % sysCfg.main_window_title, , 3
-    MoveMainWindowIfNeeded(sysCfg, uiCfg)
+    }
 
     clickCount := ToInt(uiCfg.qr_button_click_count, 2)
     waitMs := ToInt(uiCfg.qr_button_wait_ms, 400)
+    AppendDebug("qr_open_begin", "attempts=" . clickCount . "|wait_ms=" . waitMs . "|main=" . sysCfg.main_window_title)
+
+    try {
+        WinActivate, % sysCfg.main_window_title
+        WinWaitActive, % sysCfg.main_window_title, , 3
+    } catch e {
+        AppendDebug("qr_open_activate_error", DescribeException(e) . "|" . DescribeOpenFitiWindows(sysCfg))
+    }
+    MoveMainWindowIfNeeded(sysCfg, uiCfg)
 
     Loop, %clickCount%
     {
+        AppendDebug("qr_open_click", A_Index . "/" . clickCount . "|x=" . uiCfg.qr_button_x . "|y=" . uiCfg.qr_button_y)
         MouseClick, left, % uiCfg.qr_button_x, % uiCfg.qr_button_y, 1, 0
         Sleep, %waitMs%
-        if WinExist(sysCfg.qr_window_title)
+        if WinExist(sysCfg.qr_window_title) {
+            AppendDebug("qr_open_success", "click=" . A_Index . "|" . DescribeOpenFitiWindows(sysCfg))
             return true
+        }
     }
 
-    return WaitForWindow(sysCfg.qr_window_title, ToInt(sysCfg.wait_qr_window_timeout_ms, 8000), ToInt(sysCfg.default_poll_interval_ms, 200))
+    timeoutMs := ToInt(sysCfg.wait_qr_window_timeout_ms, 8000)
+    pollMs := ToInt(sysCfg.default_poll_interval_ms, 200)
+    AppendDebug("qr_open_wait", "timeout_ms=" . timeoutMs . "|poll_ms=" . pollMs)
+
+    if WaitForWindow(sysCfg.qr_window_title, timeoutMs, pollMs) {
+        AppendDebug("qr_open_success", "wait|" . DescribeOpenFitiWindows(sysCfg))
+        return true
+    }
+
+    AppendDebug("qr_open_timeout", DescribeOpenFitiWindows(sysCfg))
+    return false
 }
 
 ExecuteReceipt(receiptNo, teamCfg, sysCfg, uiCfg) {
@@ -459,38 +481,93 @@ IncrementTeamReloginCount() {
     g_Runtime.currentTeamStats.relogin_count += 1
 }
 
+MaskLoginValue(value) {
+    value := Trim(value . "")
+    if (value = "" || value = "window_closed" || value = "read_failed")
+        return value
+
+    valueLen := StrLen(value)
+    if (valueLen <= 4)
+        return SubStr("****", 1, valueLen)
+
+    return SubStr(value, 1, 2) . "***" . SubStr(value, valueLen - 1)
+}
+
+TryFocusControl(windowTitle, controlName, debugCode := "control_focus_error") {
+    if (controlName = "")
+        return false
+    if !WinExist(windowTitle) {
+        AppendDebug(debugCode, controlName . "|window_missing|" . windowTitle)
+        return false
+    }
+
+    try {
+        ControlFocus, % controlName, % windowTitle
+        Sleep, 100
+        return true
+    } catch e {
+        AppendDebug(debugCode, controlName . "|" . DescribeException(e))
+        return false
+    }
+}
+
 SetLoginFieldValue(windowTitle, controlName, value, verifyText := true) {
     if (controlName = "")
         return false
 
-    ControlFocus, % controlName, % windowTitle
-    Sleep, 100
+    writeOk := false
+    TryFocusControl(windowTitle, controlName, "login_field_focus_error")
 
-    ControlSetText, % controlName, , % windowTitle
-    Sleep, 100
-    ControlSetText, % controlName, % value, % windowTitle
-    Sleep, 100
+    try {
+        ControlSetText, % controlName, , % windowTitle
+        Sleep, 100
+        ControlSetText, % controlName, % value, % windowTitle
+        Sleep, 100
+        writeOk := true
+    } catch e {
+        AppendDebug("login_settext_error", controlName . "|" . DescribeException(e))
+    }
+
+    if (!verifyText && writeOk)
+        return true
+
+    actual := SafeReadLoginField(windowTitle, controlName)
+    if (actual = value)
+        return true
+
+    try {
+        Control, EditPaste, % value, % controlName, % windowTitle
+        Sleep, 100
+        writeOk := true
+    } catch e {
+        AppendDebug("login_editpaste_error", controlName . "|" . DescribeException(e))
+    }
+
+    if (!verifyText && writeOk)
+        return true
+
+    actual := SafeReadLoginField(windowTitle, controlName)
+    if (actual = value)
+        return true
+
+    if !TryFocusControl(windowTitle, controlName, "login_field_refocus_error")
+        return false
+
+    try {
+        ControlSend, % controlName, ^a{Del}, % windowTitle
+        Sleep, 100
+        ControlSend, % controlName, {Raw}%value%, % windowTitle
+        Sleep, 150
+        writeOk := true
+    } catch e {
+        AppendDebug("login_controlsend_error", controlName . "|" . DescribeException(e))
+        return false
+    }
 
     if (!verifyText)
-        return true
+        return writeOk
 
-    actual := ReadLoginField(windowTitle, controlName)
-    if (actual = value)
-        return true
-
-    Control, EditPaste, % value, % controlName, % windowTitle
-    Sleep, 100
-    actual := ReadLoginField(windowTitle, controlName)
-    if (actual = value)
-        return true
-
-    ControlFocus, % controlName, % windowTitle
-    Sleep, 100
-    ControlSend, % controlName, ^a{Del}, % windowTitle
-    Sleep, 100
-    ControlSend, % controlName, {Raw}%value%, % windowTitle
-    Sleep, 150
-    actual := ReadLoginField(windowTitle, controlName)
+    actual := SafeReadLoginField(windowTitle, controlName)
     return (actual = value)
 }
 
@@ -522,10 +599,15 @@ SubmitLogin(windowTitle, uiCfg) {
     if TryClickLoginButton(windowTitle, "ThunderRT6CommandButton1", uiCfg.login_password_control)
         return
 
-    ControlFocus, % uiCfg.login_password_control, % windowTitle
-    Sleep, 100
-    ControlSend, % uiCfg.login_password_control, {Enter}, % windowTitle
-    Sleep, 150
+    if !TryFocusControl(windowTitle, uiCfg.login_password_control, "login_submit_focus_error")
+        return
+
+    try {
+        ControlSend, % uiCfg.login_password_control, {Enter}, % windowTitle
+        Sleep, 150
+    } catch e {
+        AppendDebug("login_submit_send_error", DescribeException(e))
+    }
 }
 
 TryClickLoginButton(windowTitle, buttonName, passwordControl := "") {
@@ -554,15 +636,15 @@ TryClickLoginButton(windowTitle, buttonName, passwordControl := "") {
     }
 
     if (passwordControl != "") {
-        try {
-            ControlFocus, % passwordControl, % windowTitle
-            Sleep, 100
+        if TryFocusControl(windowTitle, passwordControl, "login_submit_focus_error") {
+            try {
             ControlSend, % passwordControl, {Enter}, % windowTitle
             Sleep, 250
             if !WinExist(windowTitle)
                 return true
-        } catch e {
-            AppendDebug("login_submit_enter_error", buttonName . "|" . DescribeException(e))
+            } catch e {
+                AppendDebug("login_submit_enter_error", buttonName . "|" . DescribeException(e))
+            }
         }
     }
 

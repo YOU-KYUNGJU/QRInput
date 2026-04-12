@@ -98,6 +98,20 @@ DescribeException(ex) {
     return details
 }
 
+TogglePauseHotkey() {
+    if (A_IsPaused) {
+        Pause, Off
+        AppendBootstrapLog("resume", "hotkey=F3")
+        TrayTip, QRinput, Resumed.`nPress F3 to pause again., 1, 1
+        return
+    }
+
+    AppendBootstrapLog("pause", "hotkey=F3")
+    TrayTip, QRinput, Paused.`nPress F3 to resume., 1, 1
+    Sleep, 100
+    Pause, On
+}
+
 RunTeam(teamCfg, sysCfg, uiCfg, runId) {
     global g_Runtime
     g_Runtime.currentTeamCfg := teamCfg
@@ -209,3 +223,7 @@ CreateBasicResult(status, errorCode := "", reason := "") {
 
 exitCode := Main()
 ExitApp, %exitCode%
+
+F3::
+TogglePauseHotkey()
+return
