@@ -17,8 +17,8 @@ StartFiti(sysCfg, uiCfg) {
         return false
     }
 
-    if !WaitForAnyWindow(sysCfg.login_window_title, sysCfg.main_window_title, ToInt(sysCfg.wait_main_timeout_ms, 12000), ToInt(sysCfg.default_poll_interval_ms, 200)) {
-        AppendDebug("fiti_start_timeout", sysCfg.main_window_title)
+    if !WaitForFitiStartupWindow(sysCfg, ToInt(sysCfg.wait_main_timeout_ms, 12000), ToInt(sysCfg.default_poll_interval_ms, 200)) {
+        AppendDebug("fiti_start_timeout", sysCfg.main_window_title . "|" . DescribeOpenFitiWindows(sysCfg))
         return false
     }
 
@@ -32,35 +32,67 @@ EnsureLoggedIn(teamCfg, sysCfg, uiCfg) {
         return true
     }
 
-    if !WaitForWindow(sysCfg.login_window_title, ToInt(sysCfg.wait_login_timeout_ms, 12000), ToInt(sysCfg.default_poll_interval_ms, 200)) {
-        AppendDebug("login_window_missing", teamCfg.team_name)
+    if !WaitForLoginWindow(sysCfg, ToInt(sysCfg.wait_login_timeout_ms, 12000), ToInt(sysCfg.default_poll_interval_ms, 200)) {
+        AppendDebug("login_window_missing", teamCfg.team_name . "|" . DescribeOpenFitiWindows(sysCfg))
         return WinExist(sysCfg.main_window_title)
     }
 
-    WinActivate, % sysCfg.login_window_title
-    WinWaitActive, % sysCfg.login_window_title, , 3
+    loginWindowRef := ResolveLoginWindowRef(sysCfg)
+    if (loginWindowRef = "") {
+        AppendDebug("login_window_unresolved", teamCfg.team_name . "|" . DescribeOpenFitiWindows(sysCfg))
+        return WinExist(sysCfg.main_window_title)
+    }
 
-    ControlSetText, % uiCfg.login_user_control, % teamCfg.login_id, % sysCfg.login_window_title
-    ControlSetText, % uiCfg.login_password_control, % teamCfg.login_password, % sysCfg.login_window_title
+    WinActivate, % loginWindowRef
+    WinWaitActive, % loginWindowRef, , 3
 
-    if (uiCfg.login_submit_button != "")
-        ControlClick, % uiCfg.login_submit_button, % sysCfg.login_window_title
-    else
-        SendInput, {Enter}
+    AppendDebug("login_begin", teamCfg.team_name . "|" . teamCfg.login_id)
+
+    userOk := SetLoginFieldValue(loginWindowRef, uiCfg.login_user_control, teamCfg.login_id, true)
+    passOk := SetLoginFieldValue(loginWindowRef, uiCfg.login_password_control, teamCfg.login_password, false)
+
+    AppendDebug("login_field_status", "user=" . userOk . "|pass=" . passOk)
+    AppendDebug("login_submit_begin", teamCfg.team_name . "|" . loginWindowRef)
+    SubmitLogin(loginWindowRef, uiCfg)
+    AppendDebug("login_submit_done", DescribeOpenFitiWindows(sysCfg))
 
     postKeys := uiCfg.login_post_submit_keys
-    if (postKeys != "") {
+    if (postKeys != "" && WinExist(loginWindowRef)) {
+        AppendDebug("login_post_keys", postKeys)
         Sleep, 300
         SendInput, % postKeys
     }
 
-    if !WaitForWindow(sysCfg.main_window_title, ToInt(sysCfg.wait_main_timeout_ms, 12000), ToInt(sysCfg.default_poll_interval_ms, 200)) {
-        AppendDebug("login_main_timeout", teamCfg.team_name)
+    AppendDebug("login_wait_main", sysCfg.main_window_title)
+    loginOutcome := WaitForLoginOutcome(sysCfg, uiCfg, ToInt(sysCfg.wait_main_timeout_ms, 12000), ToInt(sysCfg.default_poll_interval_ms, 200))
+    if (loginOutcome = "main") {
+        MoveMainWindowIfNeeded(sysCfg, uiCfg)
+        AppendDebug("login_success", teamCfg.team_name)
+        return true
+    }
+
+    if (loginOutcome = "modal") {
+        popupInfo := DescribeUnexpectedFitiWindow(sysCfg)
+        AppendDebug("login_modal_unhandled", popupInfo)
         return false
     }
 
-    MoveMainWindowIfNeeded(sysCfg, uiCfg)
-    return true
+    if (loginOutcome = "process_closed") {
+        AppendDebug("login_process_closed", teamCfg.team_name . "|" . DescribeOpenFitiWindows(sysCfg))
+        return false
+    }
+
+    if (loginOutcome = "login_closed") {
+        AppendDebug("login_window_closed_without_main", teamCfg.team_name . "|" . DescribeOpenFitiWindows(sysCfg))
+        return false
+    }
+
+    if !WaitForWindow(sysCfg.main_window_title, 1, 1) {
+        userText := SafeReadLoginField(loginWindowRef, uiCfg.login_user_control)
+        AppendDebug("login_main_timeout", teamCfg.team_name . "|user=" . userText . "|" . DescribeOpenFitiWindows(sysCfg))
+        return false
+    }
+    return false
 }
 
 EnsureQrWindow(sysCfg, uiCfg) {
@@ -233,11 +265,11 @@ GetCheckboxState(uiCfg) {
         return "unknown"
 
     PixelGetColor, pixelColor, % uiCfg.checkbox_pixel_x, % uiCfg.checkbox_pixel_y, RGB
-    pixelColor := StrUpper(pixelColor)
+    pixelColor := ToUpper(pixelColor)
 
-    if (uiCfg.checkbox_checked_color != "" && pixelColor = StrUpper(uiCfg.checkbox_checked_color))
+    if (uiCfg.checkbox_checked_color != "" && pixelColor = ToUpper(uiCfg.checkbox_checked_color))
         return "checked"
-    if (uiCfg.checkbox_unchecked_color != "" && pixelColor = StrUpper(uiCfg.checkbox_unchecked_color))
+    if (uiCfg.checkbox_unchecked_color != "" && pixelColor = ToUpper(uiCfg.checkbox_unchecked_color))
         return "unchecked"
     return "unknown"
 }
@@ -272,11 +304,11 @@ WaitForSaveResult(uiCfg, timeoutMs, pollMs) {
     started := A_TickCount
     while (ElapsedMs(started) <= timeoutMs) {
         PixelGetColor, pixelColor, % uiCfg.save_result_pixel_x, % uiCfg.save_result_pixel_y, RGB
-        pixelColor := StrUpper(pixelColor)
+        pixelColor := ToUpper(pixelColor)
 
-        if (uiCfg.save_result_color != "" && pixelColor = StrUpper(uiCfg.save_result_color))
+        if (uiCfg.save_result_color != "" && pixelColor = ToUpper(uiCfg.save_result_color))
             return true
-        if (uiCfg.save_result_pending_color != "" && pixelColor = StrUpper(uiCfg.save_result_pending_color)) {
+        if (uiCfg.save_result_pending_color != "" && pixelColor = ToUpper(uiCfg.save_result_pending_color)) {
             Sleep, %pollMs%
             continue
         }
@@ -286,12 +318,13 @@ WaitForSaveResult(uiCfg, timeoutMs, pollMs) {
 }
 
 MoveMainWindowIfNeeded(sysCfg, uiCfg) {
-    if !WinExist(sysCfg.main_window_title)
+    mainWindowRef := ResolveMainWindowRef(sysCfg)
+    if (mainWindowRef = "")
         return
     if (uiCfg.main_window_x = "" || uiCfg.main_window_y = "" || uiCfg.main_window_w = "" || uiCfg.main_window_h = "")
         return
 
-    WinMove, % sysCfg.main_window_title, , % uiCfg.main_window_x, % uiCfg.main_window_y, % uiCfg.main_window_w, % uiCfg.main_window_h
+    WinMove, % mainWindowRef, , % uiCfg.main_window_x, % uiCfg.main_window_y, % uiCfg.main_window_w, % uiCfg.main_window_h
 }
 
 WaitForWindow(windowTitle, timeoutMs, pollMs) {
@@ -312,6 +345,94 @@ WaitForAnyWindow(primaryTitle, secondaryTitle, timeoutMs, pollMs) {
         Sleep, %pollMs%
     }
     return false
+}
+
+WaitForFitiStartupWindow(sysCfg, timeoutMs, pollMs) {
+    started := A_TickCount
+    while (ElapsedMs(started) <= timeoutMs) {
+        if (ResolveLoginWindowRef(sysCfg) != "")
+            return true
+        if (ResolveMainWindowRef(sysCfg) != "")
+            return true
+        Sleep, %pollMs%
+    }
+    return false
+}
+
+WaitForLoginWindow(sysCfg, timeoutMs, pollMs) {
+    started := A_TickCount
+    while (ElapsedMs(started) <= timeoutMs) {
+        if (ResolveLoginWindowRef(sysCfg) != "")
+            return true
+        if WinExist(sysCfg.main_window_title)
+            return false
+        Sleep, %pollMs%
+    }
+    return false
+}
+
+ResolveLoginWindowRef(sysCfg) {
+    if (sysCfg.login_window_title != "" && WinExist(sysCfg.login_window_title))
+        return sysCfg.login_window_title
+    return GetFirstFitiWindowRef(sysCfg, "login")
+}
+
+ResolveMainWindowRef(sysCfg) {
+    if (sysCfg.main_window_title != "" && WinExist(sysCfg.main_window_title))
+        return sysCfg.main_window_title
+    return GetFirstFitiWindowRef(sysCfg, "main")
+}
+
+GetFirstFitiWindowRef(sysCfg, mode := "any") {
+    processSelector := "ahk_exe " . sysCfg.fiti_process_name
+    WinGet, idList, List, % processSelector
+    Loop, %idList%
+    {
+        hwnd := idList%A_Index%
+        if !hwnd
+            continue
+
+        windowRef := "ahk_id " . hwnd
+        WinGetTitle, currentTitle, % windowRef
+        if (Trim(currentTitle) = "")
+            continue
+
+        if (mode = "login" && sysCfg.qr_window_title != "" && InStr(currentTitle, sysCfg.qr_window_title))
+            continue
+
+        if (mode = "main") {
+            if (sysCfg.qr_window_title != "" && InStr(currentTitle, sysCfg.qr_window_title))
+                continue
+            if (sysCfg.login_window_title != "" && InStr(currentTitle, sysCfg.login_window_title))
+                continue
+        }
+
+        return windowRef
+    }
+    return ""
+}
+
+DescribeOpenFitiWindows(sysCfg) {
+    processSelector := "ahk_exe " . sysCfg.fiti_process_name
+    WinGet, idList, List, % processSelector
+    if (idList = 0)
+        return "no_process_window"
+
+    description := ""
+    Loop, %idList%
+    {
+        hwnd := idList%A_Index%
+        if !hwnd
+            continue
+
+        windowRef := "ahk_id " . hwnd
+        WinGetTitle, currentTitle, % windowRef
+        if (description != "")
+            description .= " || "
+        description .= hwnd . ":" . currentTitle
+    }
+
+    return description = "" ? "no_process_window" : description
 }
 
 CloseFiti(sysCfg) {
@@ -336,4 +457,249 @@ IncrementTeamReloginCount() {
     if !g_Runtime.currentTeamStats.HasKey("relogin_count")
         g_Runtime.currentTeamStats.relogin_count := 0
     g_Runtime.currentTeamStats.relogin_count += 1
+}
+
+SetLoginFieldValue(windowTitle, controlName, value, verifyText := true) {
+    if (controlName = "")
+        return false
+
+    ControlFocus, % controlName, % windowTitle
+    Sleep, 100
+
+    ControlSetText, % controlName, , % windowTitle
+    Sleep, 100
+    ControlSetText, % controlName, % value, % windowTitle
+    Sleep, 100
+
+    if (!verifyText)
+        return true
+
+    actual := ReadLoginField(windowTitle, controlName)
+    if (actual = value)
+        return true
+
+    Control, EditPaste, % value, % controlName, % windowTitle
+    Sleep, 100
+    actual := ReadLoginField(windowTitle, controlName)
+    if (actual = value)
+        return true
+
+    ControlFocus, % controlName, % windowTitle
+    Sleep, 100
+    ControlSend, % controlName, ^a{Del}, % windowTitle
+    Sleep, 100
+    ControlSend, % controlName, {Raw}%value%, % windowTitle
+    Sleep, 150
+    actual := ReadLoginField(windowTitle, controlName)
+    return (actual = value)
+}
+
+ReadLoginField(windowTitle, controlName) {
+    currentValue := ""
+    ControlGetText, currentValue, % controlName, % windowTitle
+    return Trim(currentValue)
+}
+
+SafeReadLoginField(windowTitle, controlName) {
+    if !WinExist(windowTitle)
+        return "window_closed"
+
+    try {
+        return ReadLoginField(windowTitle, controlName)
+    } catch e {
+        AppendDebug("login_read_error", controlName . "|" . DescribeException(e))
+        return "read_failed"
+    }
+}
+
+SubmitLogin(windowTitle, uiCfg) {
+    if (uiCfg.login_submit_button != "") {
+        TryClickLoginButton(windowTitle, uiCfg.login_submit_button, uiCfg.login_password_control)
+        return
+    }
+    if TryClickLoginButton(windowTitle, "Button1", uiCfg.login_password_control)
+        return
+    if TryClickLoginButton(windowTitle, "ThunderRT6CommandButton1", uiCfg.login_password_control)
+        return
+
+    ControlFocus, % uiCfg.login_password_control, % windowTitle
+    Sleep, 100
+    ControlSend, % uiCfg.login_password_control, {Enter}, % windowTitle
+    Sleep, 150
+}
+
+TryClickLoginButton(windowTitle, buttonName, passwordControl := "") {
+    if (buttonName = "")
+        return false
+
+    AppendDebug("login_submit_try", buttonName)
+
+    controlHwnd := ""
+    try {
+        ControlGet, controlHwnd, Hwnd,, % buttonName, % windowTitle
+    } catch e {
+        AppendDebug("login_submit_hwnd_error", buttonName . "|" . DescribeException(e))
+    }
+
+    if (controlHwnd != "")
+        AppendDebug("login_submit_hwnd", buttonName . "|" . controlHwnd)
+
+    try {
+        ControlClick, % buttonName, % windowTitle,,,, NA
+        Sleep, 250
+        if !WinExist(windowTitle)
+            return true
+    } catch e {
+        AppendDebug("login_submit_click_error", buttonName . "|" . DescribeException(e))
+    }
+
+    if (passwordControl != "") {
+        try {
+            ControlFocus, % passwordControl, % windowTitle
+            Sleep, 100
+            ControlSend, % passwordControl, {Enter}, % windowTitle
+            Sleep, 250
+            if !WinExist(windowTitle)
+                return true
+        } catch e {
+            AppendDebug("login_submit_enter_error", buttonName . "|" . DescribeException(e))
+        }
+    }
+
+    return false
+}
+
+WaitForLoginOutcome(sysCfg, uiCfg, timeoutMs, pollMs) {
+    started := A_TickCount
+    while (ElapsedMs(started) <= timeoutMs) {
+        if WinExist(sysCfg.main_window_title)
+            return "main"
+
+        popupRef := ResolveUnexpectedFitiWindowRef(sysCfg)
+        if (popupRef != "") {
+            popupInfo := DescribeUnexpectedFitiWindow(sysCfg)
+            AppendDebug("login_modal_popup", popupInfo)
+            if DismissUnexpectedFitiWindow(sysCfg, uiCfg) {
+                Sleep, %pollMs%
+                continue
+            }
+            return "modal"
+        }
+
+        if (ResolveMainWindowRef(sysCfg) != "")
+            return "main"
+
+        if !IsFitiProcessRunning(sysCfg)
+            return "process_closed"
+
+        if !WinExist(sysCfg.login_window_title)
+            return "login_closed"
+
+        Sleep, %pollMs%
+    }
+
+    return "timeout"
+}
+
+ResolveUnexpectedFitiWindowRef(sysCfg) {
+    processSelector := "ahk_exe " . sysCfg.fiti_process_name
+    WinGet, idList, List, % processSelector
+    Loop, %idList%
+    {
+        hwnd := idList%A_Index%
+        if !hwnd
+            continue
+
+        windowRef := "ahk_id " . hwnd
+        WinGetTitle, currentTitle, % windowRef
+        currentTitle := Trim(currentTitle)
+        if (currentTitle = "")
+            continue
+        if (sysCfg.login_window_title != "" && InStr(currentTitle, sysCfg.login_window_title))
+            continue
+        if (sysCfg.main_window_title != "" && InStr(currentTitle, sysCfg.main_window_title))
+            continue
+        if (sysCfg.qr_window_title != "" && InStr(currentTitle, sysCfg.qr_window_title))
+            continue
+        return windowRef
+    }
+    return ""
+}
+
+DescribeUnexpectedFitiWindow(sysCfg) {
+    popupRef := ResolveUnexpectedFitiWindowRef(sysCfg)
+    if (popupRef = "")
+        return "unexpected_window_not_found"
+
+    popupTitle := ""
+    popupText := ""
+    WinGetTitle, popupTitle, % popupRef
+    WinGetText, popupText, % popupRef
+    popupText := RegExReplace(Trim(popupText), "\s+", " ")
+    return popupTitle . "|" . popupText
+}
+
+DismissUnexpectedFitiWindow(sysCfg, uiCfg) {
+    popupRef := ResolveUnexpectedFitiWindowRef(sysCfg)
+    if (popupRef = "")
+        return false
+
+    buttonName := uiCfg.dialog_confirm_button
+    if (buttonName != "") {
+        try {
+            ControlClick, % buttonName, % popupRef
+            Sleep, 250
+            if !WinExist(popupRef) {
+                PostDismissDialogInput(sysCfg, uiCfg)
+                return true
+            }
+        } catch e {
+            AppendDebug("dialog_confirm_click_error", DescribeException(e))
+        }
+    }
+
+    try {
+        WinActivate, % popupRef
+        WinWaitActive, % popupRef, , 2
+        SendInput, {Enter}
+        Sleep, 250
+        if !WinExist(popupRef) {
+            PostDismissDialogInput(sysCfg, uiCfg)
+            return true
+        }
+    } catch e {
+        AppendDebug("dialog_confirm_enter_error", DescribeException(e))
+    }
+
+    return false
+}
+
+PostDismissDialogInput(sysCfg, uiCfg) {
+    postKeys := uiCfg.dialog_post_confirm_keys
+    if (postKeys = "")
+        return
+
+    delayMs := ToInt(uiCfg.dialog_post_confirm_delay_ms, 500)
+    if (delayMs > 0)
+        Sleep, %delayMs%
+
+    targetWindow := ResolveMainWindowRef(sysCfg)
+    if (targetWindow = "")
+        targetWindow := ResolveLoginWindowRef(sysCfg)
+    if (targetWindow = "")
+        return
+
+    try {
+        WinActivate, % targetWindow
+        WinWaitActive, % targetWindow, , 2
+        AppendDebug("dialog_post_confirm_keys", postKeys)
+        SendInput, % postKeys
+    } catch e {
+        AppendDebug("dialog_post_confirm_error", DescribeException(e))
+    }
+}
+
+IsFitiProcessRunning(sysCfg) {
+    Process, Exist, % sysCfg.fiti_process_name
+    return (ErrorLevel != 0)
 }

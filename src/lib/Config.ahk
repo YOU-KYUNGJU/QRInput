@@ -2,24 +2,86 @@ LoadConfig(path) {
     if !FileExist(path)
         throw Exception("config_not_found: " . path)
 
+    iniData := ParseIniFile(path)
     cfg := {}
     cfg._path := path
-    cfg.system := LoadIniSection(path, "system")
-    cfg.ui := LoadIniSection(path, "ui")
-    cfg["team.analysis"] := LoadIniSection(path, "team.analysis")
-    cfg["team.processing"] := LoadIniSection(path, "team.processing")
+    cfg.system := LoadIniSectionData(iniData, "system")
+    cfg.ui := LoadIniSectionData(iniData, "ui")
+    cfg["team.analysis"] := LoadIniSectionData(iniData, "team.analysis")
+    cfg["team.processing"] := LoadIniSectionData(iniData, "team.processing")
     NormalizeConfig(cfg, path)
     return cfg
 }
 
-LoadIniSection(path, section) {
+LoadIniSectionData(iniData, section) {
     obj := {}
     keys := GetSectionKeys(section)
+    sectionData := iniData.HasKey(section) ? iniData[section] : {}
     for _, key in keys {
-        IniRead, value, %path%, %section%, %key%, %A_Space%
+        value := sectionData.HasKey(key) ? sectionData[key] : ""
         obj[key] := Trim(value)
     }
     return obj
+}
+
+ParseIniFile(path) {
+    content := ReadUtf8TextFile(path)
+    sections := {}
+    currentSection := ""
+
+    Loop, Parse, content, `n, `r
+    {
+        line := A_LoopField
+        if (A_Index = 1)
+            line := StripUtf8Bom(line)
+        trimmed := Trim(line)
+        if (trimmed = "")
+            continue
+        if RegExMatch(trimmed, "^[;#]")
+            continue
+
+        if RegExMatch(trimmed, "^\[(.+)\]$", match) {
+            currentSection := Trim(match1)
+            if !sections.HasKey(currentSection)
+                sections[currentSection] := {}
+            continue
+        }
+
+        if (currentSection = "")
+            continue
+
+        delimiterPos := InStr(line, "=")
+        if (delimiterPos <= 0)
+            continue
+
+        key := Trim(SubStr(line, 1, delimiterPos - 1))
+        value := SubStr(line, delimiterPos + 1)
+        if !sections[currentSection].HasKey(key)
+            sections[currentSection][key] := value
+        else
+            sections[currentSection][key] := value
+    }
+
+    return sections
+}
+
+ReadUtf8TextFile(path) {
+    file := FileOpen(path, "r", "UTF-8")
+    if !IsObject(file)
+        throw Exception("config_open_failed: " . path)
+    content := file.Read()
+    file.Close()
+    return content
+}
+
+StripUtf8Bom(text) {
+    if (text = "")
+        return text
+
+    firstChar := SubStr(text, 1, 1)
+    if (Asc(firstChar) = 65279)
+        return SubStr(text, 2)
+    return text
 }
 
 GetSectionKeys(section) {
@@ -27,7 +89,7 @@ GetSectionKeys(section) {
         return ["app_name","fiti_exe_path","login_window_title","main_window_title","qr_window_title","fiti_process_name","max_relogin_count","max_row_retry_count","close_existing_fiti_before_run","close_fiti_after_team_run","keep_source_csv","use_lock_file","lock_file_path","history_dir","run_log_dir","debug_log_enabled","debug_log_dir","success_screenshot_enabled","failure_screenshot_enabled","default_wait_timeout_ms","default_poll_interval_ms","wait_login_timeout_ms","wait_main_timeout_ms","wait_qr_window_timeout_ms","wait_save_timeout_ms"]
 
     if (section = "ui")
-        return ["main_window_x","main_window_y","main_window_w","main_window_h","dpi_scale","login_user_control","login_password_control","login_submit_button","login_post_submit_keys","qr_button_x","qr_button_y","qr_button_click_count","qr_button_wait_ms","qr_verify_controls","checkbox_pixel_x","checkbox_pixel_y","checkbox_checked_color","checkbox_unchecked_color","checkbox_control","save_control","post_save_control","save_result_pixel_x","save_result_pixel_y","save_result_color","save_result_pending_color"]
+        return ["main_window_x","main_window_y","main_window_w","main_window_h","dpi_scale","login_user_control","login_password_control","login_submit_button","dialog_confirm_button","dialog_post_confirm_delay_ms","dialog_post_confirm_keys","login_post_submit_keys","qr_button_x","qr_button_y","qr_button_click_count","qr_button_wait_ms","qr_verify_controls","checkbox_pixel_x","checkbox_pixel_y","checkbox_checked_color","checkbox_unchecked_color","checkbox_control","save_control","post_save_control","save_result_pixel_x","save_result_pixel_y","save_result_color","save_result_pending_color"]
 
     if (section = "team.analysis" or section = "team.processing")
         return ["enabled","team_name","part_name","login_id","login_password","csv_root_path","receipt_mode","receipt_compose_columns","receipt_direct_column","row_scan_column","row_scan_pattern","cutoff_hour","allow_future_folder","file_select_policy","file_created_after_hour","postprocess_mode","failure_policy","stop_on_check_failure","move_processed_file","processed_file_dir","log_dir","screenshot_dir"]
@@ -73,6 +135,14 @@ NormalizeConfig(ByRef cfg, path) {
         cfg.ui.login_user_control := "ThunderRT6TextBox1"
     if (cfg.ui.login_password_control = "")
         cfg.ui.login_password_control := "ThunderRT6TextBox2"
+    if (cfg.ui.login_submit_button = "")
+        cfg.ui.login_submit_button := "Button1"
+    if (cfg.ui.dialog_confirm_button = "")
+        cfg.ui.dialog_confirm_button := "Button1"
+    if (cfg.ui.dialog_post_confirm_delay_ms = "")
+        cfg.ui.dialog_post_confirm_delay_ms := "500"
+    if (cfg.ui.dialog_post_confirm_keys = "")
+        cfg.ui.dialog_post_confirm_keys := ""
     if (cfg.ui.qr_button_click_count = "")
         cfg.ui.qr_button_click_count := "2"
     if (cfg.ui.qr_button_wait_ms = "")
@@ -113,7 +183,7 @@ ToInt(value, defaultValue := 0) {
 }
 
 IsTrue(value) {
-    value := StrLower(Trim(value))
+    value := ToLower(Trim(value))
     return (value = "true" or value = "1" or value = "yes" or value = "y")
 }
 
@@ -146,4 +216,14 @@ SanitizeFileName(text) {
     text := RegExReplace(text, "[\\/:*?""<>|]", "_")
     text := RegExReplace(text, "\s+", "_")
     return Trim(text, "_")
+}
+
+ToLower(value) {
+    StringLower, output, value
+    return output
+}
+
+ToUpper(value) {
+    StringUpper, output, value
+    return output
 }

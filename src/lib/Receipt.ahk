@@ -84,5 +84,5 @@ GetRowValue(rowObj, columnName) {
 
 NormalizeCellValue(value) {
     value := Trim(value, " `t`r`n")
-    return StrUpper(value)
+    return ToUpper(value)
 }

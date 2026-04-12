@@ -4,18 +4,67 @@ AcquireRunLock(sysCfg) {
 
     lockPath := sysCfg.lock_file_path
     if FileExist(lockPath) {
+        if IsStaleLockFile(lockPath) {
+            FileDelete, % lockPath
+            Sleep, 100
+        }
+    }
+
+    if FileExist(lockPath) {
         MsgBox, 48, QRinput, 이미 실행 중입니다.
         ExitApp
     }
 
     SplitPath, lockPath, , lockDir
     EnsureDir(lockDir)
-    FileAppend, %A_Now%, %lockPath%, UTF-8
+    lockContent := "pid=" A_Pid "`r`n"
+    lockContent .= "started_at=" A_Now "`r`n"
+    lockContent .= "script_dir=" A_ScriptDir "`r`n"
+    FileAppend, %lockContent%, %lockPath%, UTF-8
 }
 
 ReleaseRunLock(sysCfg) {
     if (IsTrue(sysCfg.use_lock_file) && FileExist(sysCfg.lock_file_path))
         FileDelete, % sysCfg.lock_file_path
+}
+
+IsStaleLockFile(lockPath) {
+    lockInfo := ReadLockFile(lockPath)
+    pid := lockInfo.HasKey("pid") ? Trim(lockInfo.pid) : ""
+
+    if (pid = "" || !RegExMatch(pid, "^\d+$"))
+        return true
+
+    Process, Exist, % pid
+    return (ErrorLevel = 0)
+}
+
+ReadLockFile(lockPath) {
+    info := {}
+    if !FileExist(lockPath)
+        return info
+
+    file := FileOpen(lockPath, "r", "UTF-8")
+    if !IsObject(file)
+        return info
+
+    content := file.Read()
+    file.Close()
+
+    Loop, Parse, content, `n, `r
+    {
+        line := Trim(A_LoopField)
+        if (line = "")
+            continue
+        delimiterPos := InStr(line, "=")
+        if (delimiterPos <= 0)
+            continue
+        key := Trim(SubStr(line, 1, delimiterPos - 1))
+        value := Trim(SubStr(line, delimiterPos + 1))
+        info[key] := value
+    }
+
+    return info
 }
 
 CreateRunId() {

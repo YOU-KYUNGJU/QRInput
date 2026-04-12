@@ -17,18 +17,23 @@ global g_Runtime := {}
 
 Main() {
     global g_Runtime
-
-    configPath := ResolveRuntimeConfigPath()
-    cfg := LoadConfig(configPath)
-    g_Runtime.cfg := cfg
-
-    InitializeHistoryStore(cfg.system.history_dir)
-    AcquireRunLock(cfg.system)
-
-    runId := CreateRunId()
-    g_Runtime.runId := runId
+    cfg := ""
+    lockAcquired := false
 
     try {
+        configPath := ResolveRuntimeConfigPath()
+        AppendBootstrapLog("startup", "config=" . configPath)
+
+        cfg := LoadConfig(configPath)
+        g_Runtime.cfg := cfg
+
+        InitializeHistoryStore(cfg.system.history_dir)
+        AcquireRunLock(cfg.system)
+        lockAcquired := true
+
+        runId := CreateRunId()
+        g_Runtime.runId := runId
+
         teamSections := ["team.analysis", "team.processing"]
         for _, section in teamSections {
             teamCfg := cfg[section]
@@ -36,10 +41,18 @@ Main() {
                 continue
             RunTeam(teamCfg, cfg.system, cfg.ui, runId)
         }
+
+        AppendBootstrapLog("shutdown", "completed")
+        return 0
     } catch e {
-        AppendDebug("fatal_exception", e.Message)
+        errorText := DescribeException(e)
+        AppendBootstrapLog("fatal_exception", errorText)
+        if IsObject(g_Runtime.cfg)
+            AppendDebug("fatal_exception", errorText)
+        return 1
     } finally {
-        ReleaseRunLock(cfg.system)
+        if (lockAcquired && IsObject(cfg))
+            ReleaseRunLock(cfg.system)
     }
 }
 
@@ -47,7 +60,42 @@ ResolveRuntimeConfigPath() {
     localPath := A_ScriptDir "\..\config\qr_input.local.ini"
     if FileExist(localPath)
         return localPath
-    return A_ScriptDir "\..\config\qr_input_config.template.ini"
+
+    templatePath := A_ScriptDir "\..\config\qr_input_config.template.ini"
+    if FileExist(templatePath)
+        return templatePath
+
+    throw Exception("runtime_config_missing: " . localPath . " | " . templatePath)
+}
+
+AppendBootstrapLog(code, message) {
+    bootstrapDir := A_ScriptDir "\..\logs\bootstrap"
+    EnsureDir(bootstrapDir)
+    FormatTime, ymd,, yyyyMMdd
+    filePath := bootstrapDir "\" ymd "_bootstrap.txt"
+    FileAppend, % "[" NowIso() "][" code "] " message "`r`n", %filePath%, UTF-8
+}
+
+DescribeException(ex) {
+    if !IsObject(ex)
+        return ex . ""
+
+    message := ex.Message . ""
+    what := ex.What . ""
+    extra := ex.Extra . ""
+    file := ex.File . ""
+    line := ex.Line . ""
+
+    details := "Message=" . message
+    if (what != "")
+        details .= " | What=" . what
+    if (extra != "")
+        details .= " | Extra=" . extra
+    if (file != "")
+        details .= " | File=" . file
+    if (line != "")
+        details .= " | Line=" . line
+    return details
 }
 
 RunTeam(teamCfg, sysCfg, uiCfg, runId) {
@@ -159,4 +207,5 @@ CreateBasicResult(status, errorCode := "", reason := "") {
     return {status: status, error_code: errorCode, reason: reason, row_retry_count: 0, session_retry_count: GetCurrentTeamReloginCount(), screenshot_path: "", started_at: NowIso(), finished_at: NowIso(), elapsed_ms: 0}
 }
 
-Main()
+exitCode := Main()
+ExitApp, %exitCode%

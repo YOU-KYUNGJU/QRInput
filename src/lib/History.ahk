@@ -13,7 +13,7 @@ InitializeHistoryStore(historyDir) {
 
     rows := LoadCsvRows(filePath)
     for _, rowObj in rows {
-        if (StrLower(Trim(rowObj.A)) = "team")
+        if (ToLower(Trim(rowObj.A)) = "team")
             continue
         uniqueKey := Trim(rowObj.E)
         if (uniqueKey != "")
