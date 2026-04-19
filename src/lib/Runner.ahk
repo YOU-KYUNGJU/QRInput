@@ -73,16 +73,46 @@ CreateRunId() {
 
 CollectCsvFiles(teamCfg, ByRef targetDir := "") {
     files := []
-    targetDir := ResolveTargetCsvDirectory(teamCfg)
-    if (targetDir = "" || !DirExists(targetDir))
+    targetDirs := ResolveTargetCsvDirectories(teamCfg)
+    targetDir := BuildTargetDirDebugText(targetDirs)
+    if (targetDirs.Length() = 0)
         return files
 
-    Loop, Files, % targetDir "\*.csv", F
-    {
-        if ShouldIncludeCsvFile(A_LoopFileFullPath, teamCfg)
-            files.Push(A_LoopFileFullPath)
+    seen := {}
+    for _, dirPath in targetDirs {
+        if (dirPath = "" || !DirExists(dirPath))
+            continue
+
+        Loop, Files, % dirPath "\*.csv", F
+        {
+            csvPath := A_LoopFileFullPath
+            if !ShouldIncludeCsvFile(csvPath, teamCfg)
+                continue
+
+            key := ToLower(csvPath)
+            if seen.HasKey(key)
+                continue
+
+            seen[key] := true
+            files.Push(csvPath)
+        }
     }
     return files
+}
+
+ResolveTargetCsvDirectories(teamCfg) {
+    dirs := []
+    recentCount := ToInt(teamCfg.recent_date_folder_count, 1)
+    if (recentCount > 1) {
+        dirs := FindRecentDateFolders(teamCfg.csv_root_path, recentCount)
+        if (dirs.Length() > 0)
+            return dirs
+    }
+
+    singleDir := ResolveTargetCsvDirectory(teamCfg)
+    if (singleDir != "")
+        dirs.Push(singleDir)
+    return dirs
 }
 
 ResolveTargetCsvDirectory(teamCfg) {
@@ -121,6 +151,18 @@ ResolveTargetCsvDirectory(teamCfg) {
     return root
 }
 
+BuildTargetDirDebugText(targetDirs) {
+    text := ""
+    for _, dirPath in targetDirs {
+        if (dirPath = "")
+            continue
+        if (text != "")
+            text .= " || "
+        text .= dirPath
+    }
+    return text
+}
+
 HasDirectCsvFiles(dirPath) {
     Loop, Files, % dirPath "\*.csv", F
         return true
@@ -138,6 +180,30 @@ FindDateFolderRecursive(rootDir, dateFolderName) {
             bestPath := A_LoopFileFullPath
     }
     return bestPath
+}
+
+FindRecentDateFolders(rootDir, maxCount) {
+    dirs := []
+    if (rootDir = "" || !DirExists(rootDir) || maxCount <= 0)
+        return dirs
+
+    FormatTime, today,, yyyyMMdd
+    dateMap := {}
+    CollectDateFoldersForMonth(rootDir, today, 0, today, dateMap)
+    if (CountDateMapKeys(dateMap) < maxCount)
+        CollectDateFoldersForMonth(rootDir, today, -1, today, dateMap)
+
+    sortedDates := BuildSortedDateKeyList(dateMap, "R")
+    Loop, Parse, sortedDates, `n, `r
+    {
+        dateValue := Trim(A_LoopField)
+        if (dateValue = "")
+            continue
+        dirs.Push(dateMap[dateValue])
+        if (dirs.Length() >= maxCount)
+            break
+    }
+    return dirs
 }
 
 FindNearestFutureDateFolder(rootDir, todayYmd) {
@@ -180,6 +246,45 @@ FindNearestFutureDateFolderInMonth(monthDir, todayYmd) {
             bestPath := A_LoopFileFullPath
     }
     return bestPath
+}
+
+CollectDateFoldersForMonth(rootDir, anchorYmd, monthOffset, maxYmd, ByRef dateMap) {
+    monthStamp := SubStr(anchorYmd, 1, 6) . "01000000"
+    EnvAdd, monthStamp, %monthOffset%, Months
+    monthDir := rootDir "\" SubStr(monthStamp, 1, 4) "\" SubStr(monthStamp, 5, 2)
+    if !DirExists(monthDir)
+        return
+
+    Loop, Files, % monthDir "\*", D
+    {
+        folderName := A_LoopFileName
+        if !RegExMatch(folderName, "^\d{8}$")
+            continue
+        if (folderName + 0 > maxYmd + 0)
+            continue
+
+        if (!dateMap.HasKey(folderName) || StrLen(A_LoopFileFullPath) < StrLen(dateMap[folderName]))
+            dateMap[folderName] := A_LoopFileFullPath
+    }
+}
+
+CountDateMapKeys(dateMap) {
+    count := 0
+    for _, __ in dateMap
+        count += 1
+    return count
+}
+
+BuildSortedDateKeyList(dateMap, order := "A") {
+    keyList := ""
+    for dateValue, _ in dateMap
+        keyList .= dateValue "`n"
+
+    options := "N"
+    if (order = "R")
+        options .= " R"
+    Sort, keyList, %options%
+    return keyList
 }
 
 ShouldIncludeCsvFile(csvPath, teamCfg) {

@@ -19,6 +19,7 @@
 - 행 유효 패턴: `@.*@`
 - 날짜 cutoff: 오전 10시 기준
 - 미래 날짜 폴더 허용: 운영값으로 선택
+- 최근 날짜 폴더 스캔: 현재 날짜 기준 최근 2개 `yyyyMMdd` 폴더
 - 실패 정책: continue
 - 완료 파일 이동: 선택 가능
 - 원본 CSV 유지: 예
@@ -49,7 +50,9 @@
 
 ## Team Folder Rules
 - `team.analysis`: `cutoff_hour=14`, `allow_future_folder=true`
+- `team.analysis`: `recent_date_folder_count=1`
 - `team.analysis`: cutoff 이후에는 `root\yyyy\MM` 현재월에서 오늘보다 큰 가장 가까운 `yyyyMMdd` 폴더를 먼저 찾고, 없으면 다음월 `root\yyyy\MM` 폴더에서 다시 찾는다.
 - `team.analysis`: 현재월과 다음월 모두 후보가 없으면 오늘 폴더로 fallback 한다.
 - `team.processing`: `allow_future_folder=false`
-- `team.processing`: 항상 오늘 날짜 폴더를 우선 사용하고 루트 csv는 마지막 fallback 이다.
+- `team.processing`: `recent_date_folder_count=2`
+- `team.processing`: 현재 날짜 기준으로 가장 가까운 과거 날짜 폴더 2개를 스캔 대상으로 사용한다. 오늘 폴더가 있으면 오늘+직전 날짜, 오늘 폴더가 없으면 가장 최근 2개 날짜 폴더를 사용한다.

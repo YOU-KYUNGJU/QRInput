@@ -104,5 +104,7 @@
 - 오늘 날짜 폴더를 최우선으로 찾는다.
 - 탐색 순서는 `root\yyyyMMdd` -> `root\yyyy\MM\yyyyMMdd` -> 재귀 날짜 폴더 -> root csv fallback 이다.
 - root 바로 아래 csv는 날짜 폴더를 찾지 못했을 때만 사용한다.
+- `recent_date_folder_count > 1` 이면 현재 날짜 기준 가장 가까운 과거 날짜 폴더 N개를 모아 각 폴더의 csv를 함께 스캔한다.
+- 최근 날짜 폴더 수집은 현재월을 먼저 보고, 부족할 때만 직전월을 한 번 더 확인한다.
 - `allow_future_folder=true` 이고 현재 시각이 `cutoff_hour` 이상이면 `root\yyyy\MM` 현재월에서 오늘보다 큰 가장 가까운 `yyyyMMdd` 폴더를 먼저 찾는다.
 - 현재월에 후보가 없을 때만 다음월 `root\yyyy\MM` 폴더를 한 번 더 확인하고, 그래도 없으면 오늘 폴더로 fallback 한다.
