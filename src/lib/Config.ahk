@@ -200,6 +200,29 @@ EnsureDir(path) {
         FileCreateDir, %path%
 }
 
+ResolveMonthlyLogDir(rootDir, ymd := "") {
+    rootDir := TrimTrailingSlash(rootDir)
+    if (rootDir = "")
+        return ""
+
+    if (ymd = "")
+        FormatTime, ymd,, yyyyMMdd
+
+    year := SubStr(ymd, 1, 4)
+    month := SubStr(ymd, 5, 2)
+    return rootDir "\" year "\" month
+}
+
+ResolveDatedLogFilePath(rootDir, baseFileName, ymd := "") {
+    monthlyDir := ResolveMonthlyLogDir(rootDir, ymd)
+    if (monthlyDir = "")
+        return ""
+
+    if (ymd = "")
+        FormatTime, ymd,, yyyyMMdd
+    return monthlyDir "\" ymd "_" baseFileName
+}
+
 NowIso() {
     FormatTime, ts,, yyyy-MM-dd HH:mm:ss
     return ts
@@ -218,6 +241,10 @@ SanitizeFileName(text) {
     text := RegExReplace(text, "[\\/:*?""<>|]", "_")
     text := RegExReplace(text, "\s+", "_")
     return Trim(text, "_")
+}
+
+TrimTrailingSlash(path) {
+    return RegExReplace(path, "[\\/]+$")
 }
 
 ToLower(value) {

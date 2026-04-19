@@ -22,7 +22,7 @@
 4. compose 모드에서 필수 열 누락 시 failed_invalid
 
 ## 3. 중복 방지
-1. history_success.csv에 같은 unique_key가 있으면 skipped_done
+1. `yyyyMMdd_history_success.csv` 누적 이력에 같은 unique_key가 있으면 skipped_done
 2. failed만 있고 success가 없으면 재시도 대상
 
 ## 4. 세션 복구

@@ -52,6 +52,7 @@
 - row result csv
 - debug txt(optional)
 - screenshot path 기록
+- CSV 로그는 `yyyy\MM\yyyyMMdd_*` 파일명으로 월별 폴더에 저장
 - 팀별 screenshot root 아래 `yyyy\MM\yyyyMMdd` 날짜 폴더 생성
 
 ## 3. 처리 상태 모델

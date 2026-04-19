@@ -4,6 +4,9 @@
 ### run_summary.csv
 실행 단위 요약 로그
 
+저장 위치:
+- `run_log_dir\yyyy\MM\yyyyMMdd_run_summary.csv`
+
 컬럼:
 - run_id
 - started_at
@@ -20,6 +23,9 @@
 
 ### row_results.csv
 행 단위 상세 로그
+
+저장 위치:
+- `team.*.log_dir\yyyy\MM\yyyyMMdd_row_results.csv`
 
 컬럼:
 - run_id
@@ -40,6 +46,10 @@
 
 ### history_success.csv
 재처리 제외용 성공 이력
+
+저장 위치:
+- `history_dir\yyyy\MM\yyyyMMdd_history_success.csv`
+- 기존 루트 `history_success.csv`가 있으면 호환성 때문에 함께 읽는다
 
 컬럼:
 - team
@@ -86,3 +96,4 @@ receipt_no가 절대 유일하다고 확인되기 전까지는 source_file과 ro
 2. CSV 헤더는 파일 최초 생성 시 1회만 기록
 3. 디버그용 txt는 선택
 4. 분석용 로그와 운영용 알림은 분리
+5. 누적 CSV 로그는 날짜 접두사와 `yyyy\MM` 월별 폴더로 분리한다

@@ -1,7 +1,6 @@
 AppendRunSummary(runId, teamName, status, note := "", stats := "") {
     global g_Runtime
-    filePath := g_Runtime.cfg.system.run_log_dir "\run_summary.csv"
-    EnsureDir(g_Runtime.cfg.system.run_log_dir)
+    filePath := ResolveDatedLogFilePath(g_Runtime.cfg.system.run_log_dir, "run_summary.csv")
     EnsureCsvHeader(filePath, "run_id,started_at,finished_at,team,source_file_count,source_row_count,success_count,failure_count,relogin_count,elapsed_ms,longest_step,note")
 
     startedAt := IsObject(stats) ? stats.started_at : ""
@@ -20,8 +19,7 @@ AppendRunSummary(runId, teamName, status, note := "", stats := "") {
 AppendRowResult(runId, teamName, sourceFile, rowNo, receiptNo, uniqueKey, result) {
     global g_Runtime
     teamCfg := g_Runtime.currentTeamCfg
-    EnsureDir(teamCfg.log_dir)
-    filePath := teamCfg.log_dir "\row_results.csv"
+    filePath := ResolveDatedLogFilePath(teamCfg.log_dir, "row_results.csv")
     EnsureCsvHeader(filePath, "run_id,team,source_file,row_no,receipt_no,unique_key,status,error_code,reason,row_retry_count,session_retry_count,screenshot_path,started_at,finished_at,elapsed_ms")
 
     AppendCsvRecord(filePath, [runId, teamName, sourceFile, rowNo, receiptNo, uniqueKey, result.status, result.error_code, result.reason, result.row_retry_count, result.session_retry_count, result.screenshot_path, result.started_at, result.finished_at, result.elapsed_ms])
@@ -144,10 +142,6 @@ ResolveWindowCaptureArea(windowRef := "") {
     if (A_ScreenWidth <= 0 || A_ScreenHeight <= 0)
         return ""
     return "0|0|" A_ScreenWidth "|" A_ScreenHeight
-}
-
-TrimTrailingSlash(path) {
-    return RegExReplace(path, "[\\/]+$")
 }
 
 EnsureCsvHeader(filePath, headerLine) {
