@@ -49,6 +49,13 @@
 - unique_key
 - success_at
 
+### debug artifacts
+로그인 실패, 세션 이상 등 원인 분석이 필요한 경우 `debug_log_dir` 아래에 디버그 txt와 진단용 png를 남긴다.
+진단 png 경로는 debug txt에 함께 기록한다.
+디버그 txt의 로그인 관련 텍스트는 계정/비밀번호를 마스킹한다.
+CSV 선택 경로는 `team_file_selected`, 파일 단위 집계는 `csv_scan_begin`/`csv_scan_end`로 남긴다.
+행이 처리 대상에서 빠진 이유는 `row_skipped`, 접수번호 추출 실패는 `row_invalid`, 기존 성공 이력 스킵은 `row_skipped_done`으로 남긴다.
+
 ## 2. 고유 키 원칙
 기본 키:
 `team + source_file + row_no + receipt_no`
@@ -69,6 +76,8 @@ receipt_no가 절대 유일하다고 확인되기 전까지는 source_file과 ro
 2. 실패 건 저장
 3. 경로는 row_results.csv에 기록
 4. 파일명은 `yyyyMMdd_HHmmss_team_row_receipt.png` 권장
+5. 로그인/세션 진단용 스크린샷은 운영 이력용이 아니라 debug 로그용으로만 저장한다
+6. 로그인 창이 그대로 보이는 구간은 진단 스크린샷 저장을 피하고 텍스트 로그 중심으로 남긴다
 
 ## 5. 운영 규칙
 1. 로그는 append 방식

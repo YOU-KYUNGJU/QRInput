@@ -70,6 +70,65 @@ CaptureQrScreenshot(teamCfg, sysCfg, receiptNo, status) {
     return filePath
 }
 
+CaptureDiagnosticScreenshot(label, windowRef := "") {
+    global g_Runtime
+    if !IsObject(g_Runtime.cfg)
+        return ""
+    if !IsTrue(g_Runtime.cfg.system.debug_log_enabled)
+        return ""
+    if IsLoginWindowRefForDiagnostic(windowRef)
+        return ""
+
+    captureArea := ResolveWindowCaptureArea(windowRef)
+    if (captureArea = "")
+        return ""
+
+    captureDir := g_Runtime.cfg.system.debug_log_dir "\captures"
+    EnsureDir(captureDir)
+
+    pToken := Gdip_Startup()
+    if !pToken
+        return ""
+
+    sanitizedLabel := SanitizeFileName(label)
+    if (sanitizedLabel = "")
+        sanitizedLabel := "diagnostic"
+    filePath := captureDir "\" NowFileStamp() "_" sanitizedLabel ".png"
+
+    pBitmap := Gdip_BitmapFromScreen(captureArea)
+    Gdip_SaveBitmapToFile(pBitmap, filePath)
+    Gdip_DisposeImage(pBitmap)
+    Gdip_Shutdown(pToken)
+    return filePath
+}
+
+IsLoginWindowRefForDiagnostic(windowRef := "") {
+    global g_Runtime
+    if (windowRef = "" || !WinExist(windowRef))
+        return false
+    if !IsObject(g_Runtime.cfg)
+        return false
+
+    loginTitle := g_Runtime.cfg.system.login_window_title
+    if (loginTitle = "")
+        return false
+
+    WinGetTitle, currentTitle, % windowRef
+    return InStr(currentTitle, loginTitle)
+}
+
+ResolveWindowCaptureArea(windowRef := "") {
+    if (windowRef != "" && WinExist(windowRef)) {
+        WinGetPos, winX, winY, winW, winH, % windowRef
+        if (winW != "" && winH != "" && winW > 0 && winH > 0)
+            return winX "|" winY "|" winW "|" winH
+    }
+
+    if (A_ScreenWidth <= 0 || A_ScreenHeight <= 0)
+        return ""
+    return "0|0|" A_ScreenWidth "|" A_ScreenHeight
+}
+
 EnsureCsvHeader(filePath, headerLine) {
     if FileExist(filePath)
         return

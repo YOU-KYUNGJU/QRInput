@@ -90,24 +90,33 @@ ResolveTargetCsvDirectory(teamCfg) {
     if (root = "" || !DirExists(root))
         return ""
 
-    if HasDirectCsvFiles(root)
-        return root
-
     FormatTime, today,, yyyyMMdd
     year := SubStr(today, 1, 4)
     month := SubStr(today, 5, 2)
+    cutoffHour := ToInt(teamCfg.cutoff_hour, -1)
+    FormatTime, currentHour,, HH
 
     directToday := root "\" today
-    if DirExists(directToday)
-        return directToday
-
     nestedToday := root "\" year "\" month "\" today
-    if DirExists(nestedToday)
-        return nestedToday
+    foundToday := ""
+    if DirExists(directToday)
+        foundToday := directToday
+    else if DirExists(nestedToday)
+        foundToday := nestedToday
+    else
+        foundToday := FindDateFolderRecursive(root, today)
 
-    foundToday := FindDateFolderRecursive(root, today)
+    if (IsTrue(teamCfg.allow_future_folder) && cutoffHour >= 0 && currentHour + 0 >= cutoffHour) {
+        futureDir := FindNearestFutureDateFolder(root, today)
+        if (futureDir != "")
+            return futureDir
+    }
+
     if (foundToday != "")
         return foundToday
+
+    if HasDirectCsvFiles(root)
+        return root
 
     return root
 }
@@ -126,6 +135,29 @@ FindDateFolderRecursive(rootDir, dateFolderName) {
             continue
 
         if (bestPath = "" || StrLen(A_LoopFileFullPath) < StrLen(bestPath))
+            bestPath := A_LoopFileFullPath
+    }
+    return bestPath
+}
+
+FindNearestFutureDateFolder(rootDir, todayYmd) {
+    bestDate := ""
+    bestPath := ""
+    Loop, Files, % rootDir "\*", DR
+    {
+        folderName := A_LoopFileName
+        if !RegExMatch(folderName, "^\d{8}$")
+            continue
+        if (folderName + 0 <= todayYmd + 0)
+            continue
+
+        if (bestDate = "" || folderName + 0 < bestDate + 0) {
+            bestDate := folderName
+            bestPath := A_LoopFileFullPath
+            continue
+        }
+
+        if (folderName = bestDate && StrLen(A_LoopFileFullPath) < StrLen(bestPath))
             bestPath := A_LoopFileFullPath
     }
     return bestPath
