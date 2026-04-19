@@ -5,7 +5,7 @@
 - 접수번호 생성: compose
 - 기본 조합: A + D + B
 - 행 스캔 기준: A열
-- 날짜 cutoff: 오전 11시 기준
+- 날짜 cutoff: 오후 2시 기준
 - 미래 날짜 폴더 허용: 예
 - 실패 정책: continue
 - 완료 파일 이동: 아니오
@@ -40,4 +40,16 @@
 - receipt extraction mode
 - failure policy
 - screenshot/log path
+- `screenshot_dir` 는 루트 경로만 넣고 실제 저장은 `yyyy\MM\yyyyMMdd` 하위로 분기
 - checkbox/save 판단 기준
+
+## CSV Scanner Rule
+- 공통 csv 탐색은 오늘 날짜 폴더 우선이다.
+- root 바로 아래 csv는 날짜 폴더가 없을 때만 마지막 fallback으로 사용한다.
+
+## Team Folder Rules
+- `team.analysis`: `cutoff_hour=14`, `allow_future_folder=true`
+- `team.analysis`: cutoff 이후에는 `root\yyyy\MM` 현재월에서 오늘보다 큰 가장 가까운 `yyyyMMdd` 폴더를 먼저 찾고, 없으면 다음월 `root\yyyy\MM` 폴더에서 다시 찾는다.
+- `team.analysis`: 현재월과 다음월 모두 후보가 없으면 오늘 폴더로 fallback 한다.
+- `team.processing`: `allow_future_folder=false`
+- `team.processing`: 항상 오늘 날짜 폴더를 우선 사용하고 루트 csv는 마지막 fallback 이다.

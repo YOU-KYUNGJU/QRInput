@@ -1,20 +1,45 @@
 ShouldProcessRow(rowObj, teamCfg) {
+    eligibility := EvaluateRowEligibility(rowObj, teamCfg)
+    return eligibility.should_process
+}
+
+EvaluateRowEligibility(rowObj, teamCfg) {
     scanCol := teamCfg.row_scan_column
     if (scanCol = "")
         scanCol := (teamCfg.receipt_mode = "direct") ? "B" : "A"
 
     scanValue := NormalizeCellValue(GetRowValue(rowObj, scanCol))
-    if (scanValue = "")
-        return false
-
     pattern := Trim(teamCfg.row_scan_pattern)
-    if (pattern != "" && !RegExMatch(scanValue, pattern))
-        return false
+    result := {should_process: false, reason: "", scan_column: scanCol, scan_value: scanValue, pattern: pattern}
 
-    if (teamCfg.receipt_mode = "compose")
-        return (NormalizeCellValue(GetRowValue(rowObj, "A")) != "" && NormalizeCellValue(GetRowValue(rowObj, "B")) != "" && NormalizeCellValue(GetRowValue(rowObj, "D")) != "")
+    if (scanValue = "") {
+        result.reason := "empty_scan_column"
+        return result
+    }
 
-    return true
+    if (pattern != "" && !RegExMatch(scanValue, pattern)) {
+        result.reason := "scan_pattern_mismatch"
+        return result
+    }
+
+    if (teamCfg.receipt_mode = "compose") {
+        if (NormalizeCellValue(GetRowValue(rowObj, "A")) = "") {
+            result.reason := "compose_missing_A"
+            return result
+        }
+        if (NormalizeCellValue(GetRowValue(rowObj, "B")) = "") {
+            result.reason := "compose_missing_B"
+            return result
+        }
+        if (NormalizeCellValue(GetRowValue(rowObj, "D")) = "") {
+            result.reason := "compose_missing_D"
+            return result
+        }
+    }
+
+    result.should_process := true
+    result.reason := "eligible"
+    return result
 }
 
 ExtractReceipt(rowObj, teamCfg) {

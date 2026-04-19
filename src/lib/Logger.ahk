@@ -50,7 +50,11 @@ CaptureQrScreenshot(teamCfg, sysCfg, receiptNo, status) {
     if !WinExist(sysCfg.qr_window_title)
         return ""
 
-    EnsureDir(teamCfg.screenshot_dir)
+    captureDir := ResolveTeamScreenshotDir(teamCfg)
+    if (captureDir = "")
+        return ""
+
+    EnsureDir(captureDir)
     WinGetPos, winX, winY, winW, winH, % sysCfg.qr_window_title
     if (winW = "" || winH = "" || winW <= 0 || winH <= 0)
         return ""
@@ -61,13 +65,89 @@ CaptureQrScreenshot(teamCfg, sysCfg, receiptNo, status) {
 
     sanitizedTeam := SanitizeFileName(teamCfg.team_name)
     sanitizedReceipt := SanitizeFileName(receiptNo)
-    filePath := teamCfg.screenshot_dir "\" NowFileStamp() "_" sanitizedTeam "_" sanitizedReceipt "_" status ".png"
+    filePath := captureDir "\" NowFileStamp() "_" sanitizedTeam "_" sanitizedReceipt "_" status ".png"
 
     pBitmap := Gdip_BitmapFromScreen(winX "|" winY "|" winW "|" winH)
     Gdip_SaveBitmapToFile(pBitmap, filePath)
     Gdip_DisposeImage(pBitmap)
     Gdip_Shutdown(pToken)
     return filePath
+}
+
+ResolveTeamScreenshotDir(teamCfg, ymd := "") {
+    rootDir := TrimTrailingSlash(teamCfg.screenshot_dir)
+    if (rootDir = "")
+        return ""
+
+    if (ymd = "")
+        FormatTime, ymd,, yyyyMMdd
+
+    year := SubStr(ymd, 1, 4)
+    month := SubStr(ymd, 5, 2)
+    return rootDir "\" year "\" month "\" ymd
+}
+
+CaptureDiagnosticScreenshot(label, windowRef := "") {
+    global g_Runtime
+    if !IsObject(g_Runtime.cfg)
+        return ""
+    if !IsTrue(g_Runtime.cfg.system.debug_log_enabled)
+        return ""
+    if IsLoginWindowRefForDiagnostic(windowRef)
+        return ""
+
+    captureArea := ResolveWindowCaptureArea(windowRef)
+    if (captureArea = "")
+        return ""
+
+    captureDir := g_Runtime.cfg.system.debug_log_dir "\captures"
+    EnsureDir(captureDir)
+
+    pToken := Gdip_Startup()
+    if !pToken
+        return ""
+
+    sanitizedLabel := SanitizeFileName(label)
+    if (sanitizedLabel = "")
+        sanitizedLabel := "diagnostic"
+    filePath := captureDir "\" NowFileStamp() "_" sanitizedLabel ".png"
+
+    pBitmap := Gdip_BitmapFromScreen(captureArea)
+    Gdip_SaveBitmapToFile(pBitmap, filePath)
+    Gdip_DisposeImage(pBitmap)
+    Gdip_Shutdown(pToken)
+    return filePath
+}
+
+IsLoginWindowRefForDiagnostic(windowRef := "") {
+    global g_Runtime
+    if (windowRef = "" || !WinExist(windowRef))
+        return false
+    if !IsObject(g_Runtime.cfg)
+        return false
+
+    loginTitle := g_Runtime.cfg.system.login_window_title
+    if (loginTitle = "")
+        return false
+
+    WinGetTitle, currentTitle, % windowRef
+    return InStr(currentTitle, loginTitle)
+}
+
+ResolveWindowCaptureArea(windowRef := "") {
+    if (windowRef != "" && WinExist(windowRef)) {
+        WinGetPos, winX, winY, winW, winH, % windowRef
+        if (winW != "" && winH != "" && winW > 0 && winH > 0)
+            return winX "|" winY "|" winW "|" winH
+    }
+
+    if (A_ScreenWidth <= 0 || A_ScreenHeight <= 0)
+        return ""
+    return "0|0|" A_ScreenWidth "|" A_ScreenHeight
+}
+
+TrimTrailingSlash(path) {
+    return RegExReplace(path, "[\\/]+$")
 }
 
 EnsureCsvHeader(filePath, headerLine) {

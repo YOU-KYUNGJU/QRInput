@@ -98,14 +98,41 @@ DescribeException(ex) {
     return details
 }
 
+TogglePauseHotkey() {
+    if (A_IsPaused) {
+        Pause, Off
+        AppendBootstrapLog("resume", "hotkey=F3")
+        TrayTip, QRinput, Resumed.`nPress F3 to pause again., 1, 1
+        return
+    }
+
+    AppendBootstrapLog("pause", "hotkey=F3")
+    TrayTip, QRinput, Paused.`nPress F3 to resume., 1, 1
+    Sleep, 100
+    Pause, On
+}
+
 RunTeam(teamCfg, sysCfg, uiCfg, runId) {
     global g_Runtime
     g_Runtime.currentTeamCfg := teamCfg
     g_Runtime.currentTeamStats := CreateTeamStats()
+    g_Runtime.currentTeamSessionStarted := false
     g_Runtime.currentTeamStats.started_at := NowIso()
     teamStartTick := A_TickCount
 
     AppendDebug("team_start", teamCfg.team_name)
+    targetDir := ""
+    files := CollectCsvFiles(teamCfg, targetDir)
+    g_Runtime.currentTeamStats.source_file_count := files.Length()
+    if (files.Length() = 0) {
+        AppendDebug("team_no_files", teamCfg.team_name . "|target=" . targetDir)
+        FinishTeamRun(runId, teamCfg.team_name, "team_finished", "no_source_files", teamStartTick)
+        return
+    }
+
+    AppendDebug("team_files_ready", teamCfg.team_name . "|count=" . files.Length() . "|target=" . targetDir)
+    for _, csvPath in files
+        AppendDebug("team_file_selected", teamCfg.team_name . "|" . csvPath)
     CloseExistingFitiIfNeeded(sysCfg)
 
     if !StartFiti(sysCfg, uiCfg) {
@@ -114,6 +141,7 @@ RunTeam(teamCfg, sysCfg, uiCfg, runId) {
         FinishTeamRun(runId, teamCfg.team_name, "team_login_failed", "start_fiti_failed", teamStartTick)
         return
     }
+    g_Runtime.currentTeamSessionStarted := true
 
     if !EnsureLoggedIn(teamCfg, sysCfg, uiCfg) {
         g_Runtime.currentTeamStats.failure_count += 1
@@ -128,9 +156,6 @@ RunTeam(teamCfg, sysCfg, uiCfg, runId) {
         FinishTeamRun(runId, teamCfg.team_name, "team_wait_next_schedule", "qr_window_failed", teamStartTick)
         return
     }
-
-    files := CollectCsvFiles(teamCfg)
-    g_Runtime.currentTeamStats.source_file_count := files.Length()
 
     continueTeam := true
     for _, csvPath in files {
@@ -149,8 +174,9 @@ FinishTeamRun(runId, teamName, status, note, teamStartTick) {
     global g_Runtime
     g_Runtime.currentTeamStats.finished_at := NowIso()
     g_Runtime.currentTeamStats.elapsed_ms := ElapsedMs(teamStartTick)
-    if IsTrue(g_Runtime.cfg.system.close_fiti_after_team_run)
+    if (g_Runtime.currentTeamSessionStarted && IsTrue(g_Runtime.cfg.system.close_fiti_after_team_run))
         CloseFiti(g_Runtime.cfg.system)
+    g_Runtime.currentTeamSessionStarted := false
     AppendRunSummary(runId, teamName, status, note, g_Runtime.currentTeamStats)
     AppendDebug("team_end", teamName . "|" . status . "|" . note)
 }
@@ -159,16 +185,26 @@ ProcessCsvFile(csvPath, teamCfg, sysCfg, uiCfg, runId) {
     global g_Runtime
     rows := LoadCsvRows(csvPath)
     rowCount := rows.Length()
+    skippedCount := 0
+    invalidCount := 0
+    alreadySuccessfulCount := 0
+    executedCount := 0
     g_Runtime.currentTeamStats.source_row_count += rowCount
+    AppendDebug("csv_scan_begin", teamCfg.team_name . "|" . csvPath . "|rows=" . rowCount)
 
     for _, rowObj in rows {
         rowNo := rowObj._row_no
-
-        if !ShouldProcessRow(rowObj, teamCfg)
+        eligibility := EvaluateRowEligibility(rowObj, teamCfg)
+        if !eligibility.should_process {
+            skippedCount += 1
+            AppendDebug("row_skipped", BuildRowSkipDebugMessage(teamCfg.team_name, csvPath, rowNo, eligibility))
             continue
+        }
 
         receipt := ExtractReceipt(rowObj, teamCfg)
         if (receipt.status != "ok") {
+            invalidCount += 1
+            AppendDebug("row_invalid", BuildRowInvalidDebugMessage(teamCfg.team_name, csvPath, rowNo, receipt, rowObj, teamCfg))
             invalidResult := CreateBasicResult("skipped_invalid", "invalid_receipt", receipt.reason)
             AppendRowResult(runId, teamCfg.team_name, csvPath, rowNo, "", "", invalidResult)
             continue
@@ -176,12 +212,17 @@ ProcessCsvFile(csvPath, teamCfg, sysCfg, uiCfg, runId) {
 
         uniqueKey := BuildUniqueKey(teamCfg.team_name, csvPath, rowNo, receipt.value)
         if (IsAlreadySuccessful(sysCfg.history_dir, uniqueKey)) {
+            alreadySuccessfulCount += 1
+            AppendDebug("row_skipped_done", teamCfg.team_name . "|" . csvPath . "|row=" . rowNo . "|receipt=" . receipt.value . "|reason=already_successful")
             skippedResult := CreateBasicResult("skipped_done", "", "already_successful")
             AppendRowResult(runId, teamCfg.team_name, csvPath, rowNo, receipt.value, uniqueKey, skippedResult)
             continue
         }
 
+        executedCount += 1
+        AppendDebug("row_execute_begin", teamCfg.team_name . "|" . csvPath . "|row=" . rowNo . "|receipt=" . receipt.value)
         result := ExecuteReceipt(receipt.value, teamCfg, sysCfg, uiCfg)
+        AppendDebug("row_execute_end", teamCfg.team_name . "|" . csvPath . "|row=" . rowNo . "|receipt=" . receipt.value . "|status=" . result.status . "|reason=" . NormalizeDebugValue(result.reason) . "|error=" . NormalizeDebugValue(result.error_code))
         AppendRowResult(runId, teamCfg.team_name, csvPath, rowNo, receipt.value, uniqueKey, result)
 
         if (result.status = "success") {
@@ -196,7 +237,32 @@ ProcessCsvFile(csvPath, teamCfg, sysCfg, uiCfg, runId) {
         }
     }
 
+    AppendDebug("csv_scan_end", teamCfg.team_name . "|" . csvPath . "|rows=" . rowCount . "|skipped=" . skippedCount . "|invalid=" . invalidCount . "|already_done=" . alreadySuccessfulCount . "|executed=" . executedCount)
     return true
+}
+
+BuildRowSkipDebugMessage(teamName, csvPath, rowNo, eligibility) {
+    return teamName . "|" . csvPath . "|row=" . rowNo . "|reason=" . eligibility.reason . "|scan_col=" . eligibility.scan_column . "|scan_value=" . NormalizeDebugValue(eligibility.scan_value) . "|pattern=" . NormalizeDebugValue(eligibility.pattern)
+}
+
+BuildRowInvalidDebugMessage(teamName, csvPath, rowNo, receipt, rowObj, teamCfg) {
+    if (teamCfg.receipt_mode = "direct") {
+        directCol := (teamCfg.receipt_direct_column != "") ? teamCfg.receipt_direct_column : "B"
+        rawValue := GetRowValue(rowObj, directCol)
+        return teamName . "|" . csvPath . "|row=" . rowNo . "|reason=" . receipt.reason . "|receipt_col=" . directCol . "|receipt_raw=" . NormalizeDebugValue(rawValue)
+    }
+
+    return teamName . "|" . csvPath . "|row=" . rowNo . "|reason=" . receipt.reason . "|compose_A=" . NormalizeDebugValue(GetRowValue(rowObj, "A")) . "|compose_B=" . NormalizeDebugValue(GetRowValue(rowObj, "B")) . "|compose_D=" . NormalizeDebugValue(GetRowValue(rowObj, "D"))
+}
+
+NormalizeDebugValue(value, maxLen := 120) {
+    value := StrReplace(value, "`r", " ")
+    value := StrReplace(value, "`n", " ")
+    value := RegExReplace(value, "\s+", " ")
+    value := Trim(value)
+    if (StrLen(value) > maxLen)
+        return SubStr(value, 1, maxLen) . "...(truncated)"
+    return value
 }
 
 CreateTeamStats() {
@@ -209,3 +275,7 @@ CreateBasicResult(status, errorCode := "", reason := "") {
 
 exitCode := Main()
 ExitApp, %exitCode%
+
+F3::
+TogglePauseHotkey()
+return
