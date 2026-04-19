@@ -92,7 +92,7 @@ GetSectionKeys(section) {
         return ["main_window_x","main_window_y","main_window_w","main_window_h","dpi_scale","login_user_control","login_password_control","login_submit_button","dialog_confirm_button","dialog_post_confirm_delay_ms","dialog_post_confirm_keys","login_post_submit_keys","qr_button_x","qr_button_y","qr_button_click_count","qr_button_wait_ms","qr_verify_controls","checkbox_pixel_x","checkbox_pixel_y","checkbox_checked_color","checkbox_unchecked_color","checkbox_control","save_control","post_save_control","save_result_pixel_x","save_result_pixel_y","save_result_color","save_result_pending_color"]
 
     if (section = "team.analysis" or section = "team.processing")
-        return ["enabled","team_name","part_name","login_id","login_password","csv_root_path","receipt_mode","receipt_compose_columns","receipt_direct_column","row_scan_column","row_scan_pattern","cutoff_hour","allow_future_folder","file_select_policy","file_created_after_hour","postprocess_mode","failure_policy","stop_on_check_failure","move_processed_file","processed_file_dir","log_dir","screenshot_dir"]
+        return ["enabled","team_name","part_name","login_id","login_password","csv_root_path","receipt_mode","receipt_compose_columns","receipt_direct_column","row_scan_column","row_scan_pattern","cutoff_hour","allow_future_folder","recent_date_folder_count","file_select_policy","file_created_after_hour","postprocess_mode","failure_policy","stop_on_check_failure","move_processed_file","processed_file_dir","log_dir","screenshot_dir"]
 
     return []
 }
@@ -111,6 +111,8 @@ NormalizeConfig(ByRef cfg, path) {
         for _, key in ["csv_root_path","processed_file_dir","log_dir","screenshot_dir"] {
             teamCfg[key] := ResolveConfigPath(teamCfg[key], repoRoot)
         }
+        if (teamCfg.recent_date_folder_count = "")
+            teamCfg.recent_date_folder_count := "1"
         cfg[section] := teamCfg
     }
 
