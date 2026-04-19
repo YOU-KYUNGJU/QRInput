@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## Unreleased
+- `run_summary`, `row_results`, `history_success` csv 로그를 `yyyy\MM\yyyyMMdd_*` 파일명 구조로 분리해 월별 보관하도록 조정
 - 분석화학평가팀에 `cutoff_hour` 이후 `현재월 -> 다음월` 범위에서만 가장 가까운 미래 날짜 폴더를 우선 선택하는 규칙으로 조정
 - 가공성능평가팀에 `recent_date_folder_count=2` 를 도입해 현재 날짜 기준 최근 2개 날짜 폴더를 함께 스캔하도록 조정
 - CSV 스캐너를 오늘 날짜 폴더 우선, 루트 csv 마지막 fallback 구조로 정리

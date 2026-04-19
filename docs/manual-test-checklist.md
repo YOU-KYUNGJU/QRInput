@@ -25,7 +25,7 @@
 6. 접수번호가 `@H...@` 형식으로 처리되는지 확인
 7. 체크 안 된 건이 자동 체크되는지 확인
 8. 저장 후 다음 행으로 넘어가는지 확인
-9. `logs\analysis\row_results.csv` 생성 확인
+9. `logs\analysis\yyyy\MM\yyyyMMdd_row_results.csv` 생성 확인
 10. `logs\analysis\screenshots`에 성공 스크린샷 저장 확인
 
 ## 4. 가공성능평가팀 단독 테스트
@@ -36,14 +36,14 @@
 4. B2, B3 등 여러 행도 순차 처리되는지 확인
 5. 체크 안 된 건이 자동 체크되는지 확인
 6. 저장 후 다음 행으로 넘어가는지 확인
-7. `logs\processing\row_results.csv` 생성 확인
+7. `logs\processing\yyyy\MM\yyyyMMdd_row_results.csv` 생성 확인
 8. `logs\processing\screenshots`에 성공 스크린샷 저장 확인
 
 ## 5. 중복 방지 테스트
 
 1. 동일 CSV로 두 번째 실행
 2. 이미 성공한 행이 `skipped_done`으로 기록되는지 확인
-3. `logs\history\history_success.csv`와 `row_results.csv`가 일관되는지 확인
+3. `logs\history\yyyy\MM\yyyyMMdd_history_success.csv`와 `row_results.csv`가 일관되는지 확인
 
 ## 6. 실패/재시도 테스트
 

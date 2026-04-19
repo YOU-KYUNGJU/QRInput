@@ -7,17 +7,16 @@ InitializeHistoryStore(historyDir) {
     g_HistoryLoadedPath := historyDir
 
     EnsureDir(historyDir)
-    filePath := historyDir "\history_success.csv"
-    if !FileExist(filePath)
-        return
-
-    rows := LoadCsvRows(filePath)
-    for _, rowObj in rows {
-        if (ToLower(Trim(rowObj.A)) = "team")
-            continue
-        uniqueKey := Trim(rowObj.E)
-        if (uniqueKey != "")
-            g_HistoryCache[uniqueKey] := true
+    filePaths := CollectHistoryStoreFiles(historyDir)
+    for _, filePath in filePaths {
+        rows := LoadCsvRows(filePath)
+        for _, rowObj in rows {
+            if (ToLower(Trim(rowObj.A)) = "team")
+                continue
+            uniqueKey := Trim(rowObj.E)
+            if (uniqueKey != "")
+                g_HistoryCache[uniqueKey] := true
+        }
     }
 }
 
@@ -39,8 +38,30 @@ AppendSuccessHistory(historyDir, teamName, sourceFile, rowNo, receiptNo, uniqueK
     if g_HistoryCache.HasKey(uniqueKey)
         return
 
-    filePath := historyDir "\history_success.csv"
+    filePath := ResolveDatedLogFilePath(historyDir, "history_success.csv")
     EnsureCsvHeader(filePath, "team,source_file,row_no,receipt_no,unique_key,success_at")
     AppendCsvRecord(filePath, [teamName, sourceFile, rowNo, receiptNo, uniqueKey, NowIso()])
     g_HistoryCache[uniqueKey] := true
+}
+
+CollectHistoryStoreFiles(historyDir) {
+    files := []
+    seen := {}
+
+    legacyPath := historyDir "\history_success.csv"
+    if FileExist(legacyPath) {
+        files.Push(legacyPath)
+        seen[ToLower(legacyPath)] := true
+    }
+
+    Loop, Files, % historyDir "\*_history_success.csv", FR
+    {
+        filePath := A_LoopFileFullPath
+        key := ToLower(filePath)
+        if seen.HasKey(key)
+            continue
+        seen[key] := true
+        files.Push(filePath)
+    }
+    return files
 }
