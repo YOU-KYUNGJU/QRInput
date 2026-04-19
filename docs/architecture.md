@@ -52,6 +52,7 @@
 - row result csv
 - debug txt(optional)
 - screenshot path 기록
+- 팀별 screenshot root 아래 `yyyy\MM\yyyyMMdd` 날짜 폴더 생성
 
 ## 3. 처리 상태 모델
 행 단위 상태:
@@ -103,4 +104,5 @@
 - 오늘 날짜 폴더를 최우선으로 찾는다.
 - 탐색 순서는 `root\yyyyMMdd` -> `root\yyyy\MM\yyyyMMdd` -> 재귀 날짜 폴더 -> root csv fallback 이다.
 - root 바로 아래 csv는 날짜 폴더를 찾지 못했을 때만 사용한다.
-- `allow_future_folder=true` 이고 현재 시각이 `cutoff_hour` 이상이면 오늘보다 큰 가장 가까운 `yyyyMMdd` 폴더를 먼저 찾는다.
+- `allow_future_folder=true` 이고 현재 시각이 `cutoff_hour` 이상이면 `root\yyyy\MM` 현재월에서 오늘보다 큰 가장 가까운 `yyyyMMdd` 폴더를 먼저 찾는다.
+- 현재월에 후보가 없을 때만 다음월 `root\yyyy\MM` 폴더를 한 번 더 확인하고, 그래도 없으면 오늘 폴더로 fallback 한다.

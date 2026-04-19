@@ -50,7 +50,11 @@ CaptureQrScreenshot(teamCfg, sysCfg, receiptNo, status) {
     if !WinExist(sysCfg.qr_window_title)
         return ""
 
-    EnsureDir(teamCfg.screenshot_dir)
+    captureDir := ResolveTeamScreenshotDir(teamCfg)
+    if (captureDir = "")
+        return ""
+
+    EnsureDir(captureDir)
     WinGetPos, winX, winY, winW, winH, % sysCfg.qr_window_title
     if (winW = "" || winH = "" || winW <= 0 || winH <= 0)
         return ""
@@ -61,13 +65,26 @@ CaptureQrScreenshot(teamCfg, sysCfg, receiptNo, status) {
 
     sanitizedTeam := SanitizeFileName(teamCfg.team_name)
     sanitizedReceipt := SanitizeFileName(receiptNo)
-    filePath := teamCfg.screenshot_dir "\" NowFileStamp() "_" sanitizedTeam "_" sanitizedReceipt "_" status ".png"
+    filePath := captureDir "\" NowFileStamp() "_" sanitizedTeam "_" sanitizedReceipt "_" status ".png"
 
     pBitmap := Gdip_BitmapFromScreen(winX "|" winY "|" winW "|" winH)
     Gdip_SaveBitmapToFile(pBitmap, filePath)
     Gdip_DisposeImage(pBitmap)
     Gdip_Shutdown(pToken)
     return filePath
+}
+
+ResolveTeamScreenshotDir(teamCfg, ymd := "") {
+    rootDir := TrimTrailingSlash(teamCfg.screenshot_dir)
+    if (rootDir = "")
+        return ""
+
+    if (ymd = "")
+        FormatTime, ymd,, yyyyMMdd
+
+    year := SubStr(ymd, 1, 4)
+    month := SubStr(ymd, 5, 2)
+    return rootDir "\" year "\" month "\" ymd
 }
 
 CaptureDiagnosticScreenshot(label, windowRef := "") {
@@ -127,6 +144,10 @@ ResolveWindowCaptureArea(windowRef := "") {
     if (A_ScreenWidth <= 0 || A_ScreenHeight <= 0)
         return ""
     return "0|0|" A_ScreenWidth "|" A_ScreenHeight
+}
+
+TrimTrailingSlash(path) {
+    return RegExReplace(path, "[\\/]+$")
 }
 
 EnsureCsvHeader(filePath, headerLine) {

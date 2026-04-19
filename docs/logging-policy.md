@@ -75,9 +75,11 @@ receipt_no가 절대 유일하다고 확인되기 전까지는 source_file과 ro
 1. 성공 건 저장
 2. 실패 건 저장
 3. 경로는 row_results.csv에 기록
-4. 파일명은 `yyyyMMdd_HHmmss_team_row_receipt.png` 권장
-5. 로그인/세션 진단용 스크린샷은 운영 이력용이 아니라 debug 로그용으로만 저장한다
-6. 로그인 창이 그대로 보이는 구간은 진단 스크린샷 저장을 피하고 텍스트 로그 중심으로 남긴다
+4. `team.*.screenshot_dir` 는 루트 경로로 저장하고 실제 파일은 `screenshot_dir\yyyy\MM\yyyyMMdd` 아래에 만든다
+5. 파일명은 `yyyyMMdd_HHmmss_team_receipt_status.png` 형식으로 저장한다
+6. `config/qr_input.local.ini` 또는 `config/qr_input_config.template.ini` 의 `team.analysis.screenshot_dir`, `team.processing.screenshot_dir` 를 바꾸면 저장 위치를 직접 바꿀 수 있다
+7. 로그인/세션 진단용 스크린샷은 운영 이력용이 아니라 debug 로그용으로만 저장한다
+8. 로그인 창이 그대로 보이는 구간은 진단 스크린샷 저장을 피하고 텍스트 로그 중심으로 남긴다
 
 ## 5. 운영 규칙
 1. 로그는 append 방식

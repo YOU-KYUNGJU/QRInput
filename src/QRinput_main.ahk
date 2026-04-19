@@ -121,15 +121,16 @@ RunTeam(teamCfg, sysCfg, uiCfg, runId) {
     teamStartTick := A_TickCount
 
     AppendDebug("team_start", teamCfg.team_name)
-    files := CollectCsvFiles(teamCfg)
+    targetDir := ""
+    files := CollectCsvFiles(teamCfg, targetDir)
     g_Runtime.currentTeamStats.source_file_count := files.Length()
     if (files.Length() = 0) {
-        AppendDebug("team_no_files", teamCfg.team_name . "|target=" . ResolveTargetCsvDirectory(teamCfg))
+        AppendDebug("team_no_files", teamCfg.team_name . "|target=" . targetDir)
         FinishTeamRun(runId, teamCfg.team_name, "team_finished", "no_source_files", teamStartTick)
         return
     }
 
-    AppendDebug("team_files_ready", teamCfg.team_name . "|count=" . files.Length() . "|target=" . ResolveTargetCsvDirectory(teamCfg))
+    AppendDebug("team_files_ready", teamCfg.team_name . "|count=" . files.Length() . "|target=" . targetDir)
     for _, csvPath in files
         AppendDebug("team_file_selected", teamCfg.team_name . "|" . csvPath)
     CloseExistingFitiIfNeeded(sysCfg)

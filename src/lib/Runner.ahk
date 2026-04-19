@@ -71,7 +71,7 @@ CreateRunId() {
     return NowFileStamp()
 }
 
-CollectCsvFiles(teamCfg) {
+CollectCsvFiles(teamCfg, ByRef targetDir := "") {
     files := []
     targetDir := ResolveTargetCsvDirectory(teamCfg)
     if (targetDir = "" || !DirExists(targetDir))
@@ -141,9 +141,28 @@ FindDateFolderRecursive(rootDir, dateFolderName) {
 }
 
 FindNearestFutureDateFolder(rootDir, todayYmd) {
+    currentYear := SubStr(todayYmd, 1, 4)
+    currentMonth := SubStr(todayYmd, 5, 2)
+
+    bestPath := FindNearestFutureDateFolderInMonth(rootDir "\" currentYear "\" currentMonth, todayYmd)
+    if (bestPath != "")
+        return bestPath
+
+    nextMonthStamp := currentYear . currentMonth . "01000000"
+    EnvAdd, nextMonthStamp, 1, Months
+    nextYear := SubStr(nextMonthStamp, 1, 4)
+    nextMonth := SubStr(nextMonthStamp, 5, 2)
+
+    return FindNearestFutureDateFolderInMonth(rootDir "\" nextYear "\" nextMonth, todayYmd)
+}
+
+FindNearestFutureDateFolderInMonth(monthDir, todayYmd) {
+    if !DirExists(monthDir)
+        return ""
+
     bestDate := ""
     bestPath := ""
-    Loop, Files, % rootDir "\*", DR
+    Loop, Files, % monthDir "\*", D
     {
         folderName := A_LoopFileName
         if !RegExMatch(folderName, "^\d{8}$")
