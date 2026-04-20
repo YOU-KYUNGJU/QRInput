@@ -26,7 +26,9 @@
 7. 체크 안 된 건이 자동 체크되는지 확인
 8. 저장 후 다음 행으로 넘어가는지 확인
 9. `logs\analysis\yyyy\MM\yyyyMMdd_row_results.csv` 생성 확인
-10. `logs\analysis\screenshots`에 성공 스크린샷 저장 확인
+10. `reason=checked_and_saved` 인 행은 `team.analysis.screenshot_dir\yyyy\MM\yyyyMMdd` 경로에 성공 스크린샷이 저장되는지 확인
+11. `reason=already_checked` 인 행은 `screenshot_path` 가 비어 있고 새 성공 스크린샷 파일이 생기지 않는지 확인
+12. `.\scripts\sync_screenshots.ps1 -Team analysis` 실행 후 `team.analysis.screenshot_sync_dir\yyyy\MM\yyyyMMdd` 에 동일 파일 반영 확인
 
 ## 4. 가공성능평가팀 단독 테스트
 
@@ -37,7 +39,9 @@
 5. 체크 안 된 건이 자동 체크되는지 확인
 6. 저장 후 다음 행으로 넘어가는지 확인
 7. `logs\processing\yyyy\MM\yyyyMMdd_row_results.csv` 생성 확인
-8. `logs\processing\screenshots`에 성공 스크린샷 저장 확인
+8. `reason=checked_and_saved` 인 행은 `team.processing.screenshot_dir\yyyy\MM\yyyyMMdd` 경로에 성공 스크린샷이 저장되는지 확인
+9. `reason=already_checked` 인 행은 `screenshot_path` 가 비어 있고 새 성공 스크린샷 파일이 생기지 않는지 확인
+10. `.\scripts\sync_screenshots.ps1 -Team processing` 실행 후 `team.processing.screenshot_sync_dir\yyyy\MM\yyyyMMdd` 에 동일 파일 반영 확인
 
 ## 5. 중복 방지 테스트
 
@@ -73,4 +77,5 @@
 3. 중복 처리 방지 확인
 4. 실패 후 다음 실행 재시도 확인
 5. 세션 복구 시나리오 1회 이상 검증
-6. 로그와 스크린샷 경로 검증
+6. 로그와 로컬 스크린샷 경로 검증
+7. `scripts\sync_screenshots.ps1` 동기화 검증

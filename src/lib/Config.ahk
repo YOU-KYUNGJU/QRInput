@@ -86,7 +86,7 @@ StripUtf8Bom(text) {
 
 GetSectionKeys(section) {
     if (section = "system")
-        return ["app_name","fiti_exe_path","login_window_title","main_window_title","qr_window_title","fiti_process_name","max_relogin_count","max_row_retry_count","close_existing_fiti_before_run","close_fiti_after_team_run","keep_source_csv","use_lock_file","lock_file_path","history_dir","run_log_dir","debug_log_enabled","debug_log_dir","success_screenshot_enabled","failure_screenshot_enabled","default_wait_timeout_ms","default_poll_interval_ms","wait_login_timeout_ms","wait_main_timeout_ms","wait_qr_window_timeout_ms","wait_save_timeout_ms"]
+        return ["app_name","fiti_exe_path","login_window_title","main_window_title","qr_window_title","fiti_process_name","max_relogin_count","max_row_retry_count","close_existing_fiti_before_run","close_fiti_after_team_run","keep_source_csv","use_lock_file","lock_file_path","history_dir","run_log_dir","debug_log_enabled","debug_log_dir","success_screenshot_enabled","already_checked_success_screenshot_enabled","failure_screenshot_enabled","default_wait_timeout_ms","default_poll_interval_ms","wait_login_timeout_ms","wait_main_timeout_ms","wait_qr_window_timeout_ms","wait_save_timeout_ms"]
 
     if (section = "ui")
         return ["main_window_x","main_window_y","main_window_w","main_window_h","dpi_scale","login_user_control","login_password_control","login_submit_button","dialog_confirm_button","dialog_post_confirm_delay_ms","dialog_post_confirm_keys","login_post_submit_keys","qr_button_x","qr_button_y","qr_button_click_count","qr_button_wait_ms","qr_verify_controls","checkbox_pixel_x","checkbox_pixel_y","checkbox_checked_color","checkbox_unchecked_color","checkbox_control","save_control","post_save_control","save_result_pixel_x","save_result_pixel_y","save_result_color","save_result_pending_color"]
@@ -132,6 +132,8 @@ NormalizeConfig(ByRef cfg, path) {
         cfg.system.wait_qr_window_timeout_ms := cfg.system.default_wait_timeout_ms
     if (cfg.system.wait_save_timeout_ms = "")
         cfg.system.wait_save_timeout_ms := cfg.system.default_wait_timeout_ms
+    if (cfg.system.already_checked_success_screenshot_enabled = "")
+        cfg.system.already_checked_success_screenshot_enabled := "false"
 
     if (cfg.ui.login_user_control = "")
         cfg.ui.login_user_control := "ThunderRT6TextBox1"

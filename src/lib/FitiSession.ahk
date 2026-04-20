@@ -247,7 +247,7 @@ ExecuteReceipt(receiptNo, teamCfg, sysCfg, uiCfg) {
             result.status := "success"
             result.error_code := ""
             result.reason := "already_checked"
-            result.screenshot_path := CaptureQrScreenshot(teamCfg, sysCfg, receiptNo, "success")
+            result.screenshot_path := CaptureSuccessResultScreenshot(teamCfg, sysCfg, receiptNo, result.reason)
             break
         }
 
@@ -257,7 +257,7 @@ ExecuteReceipt(receiptNo, teamCfg, sysCfg, uiCfg) {
                     result.status := "success"
                     result.error_code := ""
                     result.reason := "checked_and_saved"
-                    result.screenshot_path := CaptureQrScreenshot(teamCfg, sysCfg, receiptNo, "success")
+                    result.screenshot_path := CaptureSuccessResultScreenshot(teamCfg, sysCfg, receiptNo, result.reason)
                     break
                 }
                 result.status := "failed"
@@ -283,6 +283,12 @@ ExecuteReceipt(receiptNo, teamCfg, sysCfg, uiCfg) {
     result.finished_at := NowIso()
     result.elapsed_ms := ElapsedMs(startTick)
     return result
+}
+
+CaptureSuccessResultScreenshot(teamCfg, sysCfg, receiptNo, reason) {
+    if (reason = "already_checked" && !IsTrue(sysCfg.already_checked_success_screenshot_enabled))
+        return ""
+    return CaptureQrScreenshot(teamCfg, sysCfg, receiptNo, "success")
 }
 
 EnsureSessionReady(teamCfg, sysCfg, uiCfg) {

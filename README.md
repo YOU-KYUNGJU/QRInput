@@ -35,6 +35,22 @@ PowerShell에서 아래 실행:
 - `dist\config\qr_input_config.template.ini`
 - `dist\docs\manual-test-checklist.md`
 
+## 스크린샷 운영
+
+운영 중 스크린샷은 `team.*.screenshot_dir` 로 지정한 로컬 캐시에 먼저 저장합니다.
+서버 보관은 별도 동기화 스크립트로 분리합니다.
+기본값으로 `reason=already_checked` 인 success 는 새 스크린샷을 만들지 않습니다.
+
+```powershell
+.\scripts\sync_screenshots.ps1
+```
+
+팀 하나만 동기화할 때:
+
+```powershell
+.\scripts\sync_screenshots.ps1 -Team analysis
+```
+
 ## 테스트
 
 수동 테스트 절차는 [docs/manual-test-checklist.md](/c:/Users/eye2b/Documents/20260104/QRinput/docs/manual-test-checklist.md)를 기준으로 진행합니다.
