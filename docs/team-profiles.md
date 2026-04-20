@@ -41,7 +41,9 @@
 - receipt extraction mode
 - failure policy
 - screenshot/log path
-- `screenshot_dir` 는 루트 경로만 넣고 실제 저장은 `yyyy\MM\yyyyMMdd` 하위로 분기
+- `screenshot_dir` 는 로컬 캐시 루트 경로만 넣고 실제 저장은 `yyyy\MM\yyyyMMdd` 하위로 분기
+- 서버 보관이 필요하면 `screenshot_sync_dir` 로 분리하고 `scripts/sync_screenshots.ps1` 로 동기화
+- `already_checked_success_screenshot_enabled` 로 이미 체크된 success 의 재캡처 여부를 공통 제어
 - checkbox/save 판단 기준
 
 ## CSV Scanner Rule

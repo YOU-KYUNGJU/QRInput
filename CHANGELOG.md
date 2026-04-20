@@ -9,6 +9,8 @@
 - 로그인 후 메인/QR 전환과 가공성능평가팀 QR 처리 진단 보강
 - 팀 시작 시 csv 대상 폴더 해석 결과를 재사용해서 네트워크 공유폴더 재탐색을 줄임
 - 팀별 스크린샷 저장 경로를 설정 루트 기준 `yyyy\MM\yyyyMMdd` 날짜 폴더로 분리하고 파일서버 UNC 경로로 옮길 수 있게 조정
+- 운영 스크린샷을 로컬 캐시에 먼저 저장하고 `scripts/sync_screenshots.ps1` 로 서버에 별도 동기화하는 방식으로 조정
+- `already_checked` 성공 건은 기본적으로 새 스크린샷을 만들지 않도록 `already_checked_success_screenshot_enabled=false` 설정 추가
 
 ## 0.1.0
 - 저장소 초기 구조 생성
