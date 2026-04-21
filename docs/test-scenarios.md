@@ -24,6 +24,8 @@
 ## 3. 중복 방지
 1. `yyyyMMdd_history_success.csv` 누적 이력에 같은 unique_key가 있으면 skipped_done
 2. failed만 있고 success가 없으면 재시도 대상
+3. 오늘 같은 팀에서 이미 success 처리된 receipt_no가 있으면 다른 row/source_file이어도 skipped_done + duplicate_receipt_today
+4. 오늘 success 이력이 없고 failed만 있으면 같은 receipt_no라도 QR 처리 대상
 
 ## 4. 세션 복구
 1. 로그인 창 재등장 시 session_relogin 처리

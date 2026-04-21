@@ -188,7 +188,9 @@ ProcessCsvFile(csvPath, teamCfg, sysCfg, uiCfg, runId) {
     skippedCount := 0
     invalidCount := 0
     alreadySuccessfulCount := 0
+    duplicateReceiptCount := 0
     executedCount := 0
+    stopReason := ""
     g_Runtime.currentTeamStats.source_row_count += rowCount
     AppendDebug("csv_scan_begin", teamCfg.team_name . "|" . csvPath . "|rows=" . rowCount)
 
@@ -198,6 +200,11 @@ ProcessCsvFile(csvPath, teamCfg, sysCfg, uiCfg, runId) {
         if !eligibility.should_process {
             skippedCount += 1
             AppendDebug("row_skipped", BuildRowSkipDebugMessage(teamCfg.team_name, csvPath, rowNo, eligibility))
+            if ShouldStopFileOnEmptyScanColumn(teamCfg, eligibility) {
+                stopReason := "empty_scan_column"
+                AppendDebug("csv_scan_stop", teamCfg.team_name . "|" . csvPath . "|row=" . rowNo . "|reason=" . stopReason . "|scan_col=" . eligibility.scan_column)
+                break
+            }
             continue
         }
 
@@ -215,6 +222,14 @@ ProcessCsvFile(csvPath, teamCfg, sysCfg, uiCfg, runId) {
             alreadySuccessfulCount += 1
             AppendDebug("row_skipped_done", teamCfg.team_name . "|" . csvPath . "|row=" . rowNo . "|receipt=" . receipt.value . "|reason=already_successful")
             skippedResult := CreateBasicResult("skipped_done", "", "already_successful")
+            AppendRowResult(runId, teamCfg.team_name, csvPath, rowNo, receipt.value, uniqueKey, skippedResult)
+            continue
+        }
+
+        if ShouldSkipTodaySuccessfulReceipt(teamCfg, sysCfg.history_dir, teamCfg.team_name, receipt.value) {
+            duplicateReceiptCount += 1
+            AppendDebug("row_skipped_done", teamCfg.team_name . "|" . csvPath . "|row=" . rowNo . "|receipt=" . receipt.value . "|reason=duplicate_receipt_today")
+            skippedResult := CreateBasicResult("skipped_done", "", "duplicate_receipt_today")
             AppendRowResult(runId, teamCfg.team_name, csvPath, rowNo, receipt.value, uniqueKey, skippedResult)
             continue
         }
@@ -237,8 +252,18 @@ ProcessCsvFile(csvPath, teamCfg, sysCfg, uiCfg, runId) {
         }
     }
 
-    AppendDebug("csv_scan_end", teamCfg.team_name . "|" . csvPath . "|rows=" . rowCount . "|skipped=" . skippedCount . "|invalid=" . invalidCount . "|already_done=" . alreadySuccessfulCount . "|executed=" . executedCount)
+    AppendDebug("csv_scan_end", teamCfg.team_name . "|" . csvPath . "|rows=" . rowCount . "|skipped=" . skippedCount . "|invalid=" . invalidCount . "|already_done=" . alreadySuccessfulCount . "|duplicate_today=" . duplicateReceiptCount . "|executed=" . executedCount . "|stop_reason=" . stopReason)
     return true
+}
+
+ShouldStopFileOnEmptyScanColumn(teamCfg, eligibility) {
+    return IsTrue(teamCfg.stop_file_on_empty_scan_column) && (eligibility.reason = "empty_scan_column")
+}
+
+ShouldSkipTodaySuccessfulReceipt(teamCfg, historyDir, teamName, receiptNo) {
+    if !IsTrue(teamCfg.skip_today_success_receipt)
+        return false
+    return IsReceiptSuccessfulToday(historyDir, teamName, receiptNo)
 }
 
 BuildRowSkipDebugMessage(teamName, csvPath, rowNo, eligibility) {

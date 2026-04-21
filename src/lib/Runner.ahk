@@ -288,6 +288,12 @@ BuildSortedDateKeyList(dateMap, order := "A") {
 }
 
 ShouldIncludeCsvFile(csvPath, teamCfg) {
+    previousDatePolicy := EvaluatePreviousDateCsvPolicy(csvPath, teamCfg)
+    if !previousDatePolicy.should_include {
+        AppendDebug("csv_file_skipped", teamCfg.team_name . "|" . csvPath . "|reason=" . previousDatePolicy.reason)
+        return false
+    }
+
     policy := teamCfg.file_select_policy
     if (policy = "created_after_hour") {
         cutoffHour := ToInt(teamCfg.cutoff_hour, 0)
@@ -301,6 +307,47 @@ ShouldIncludeCsvFile(csvPath, teamCfg) {
         }
     }
     return true
+}
+
+EvaluatePreviousDateCsvPolicy(csvPath, teamCfg) {
+    result := {should_include: true, reason: ""}
+    scanBeforeHour := ToInt(teamCfg.previous_date_scan_before_hour, -1)
+    createdAfterHour := ToInt(teamCfg.previous_date_created_after_hour, -1)
+    if (scanBeforeHour < 0 && createdAfterHour < 0)
+        return result
+
+    dateFolder := ExtractCsvDateFolder(csvPath)
+    if (dateFolder = "")
+        return result
+
+    FormatTime, today,, yyyyMMdd
+    if (dateFolder + 0 >= today + 0)
+        return result
+
+    FormatTime, currentHour,, HH
+    if (scanBeforeHour >= 0 && currentHour + 0 >= scanBeforeHour) {
+        result.should_include := false
+        result.reason := "previous_date_scan_window_closed"
+        return result
+    }
+
+    if (createdAfterHour >= 0) {
+        FileGetTime, createdTime, %csvPath%, C
+        FormatTime, createdHour, %createdTime%, HH
+        if (createdHour + 0 < createdAfterHour) {
+            result.should_include := false
+            result.reason := "previous_date_created_before_hour"
+        }
+    }
+
+    return result
+}
+
+ExtractCsvDateFolder(csvPath) {
+    normalizedPath := StrReplace(csvPath, "/", "\")
+    if RegExMatch(normalizedPath, "\\(\d{8})\\", match)
+        return match1
+    return ""
 }
 
 LoadCsvRows(csvPath) {

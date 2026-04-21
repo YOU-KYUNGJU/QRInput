@@ -48,6 +48,16 @@
 1. 동일 CSV로 두 번째 실행
 2. 이미 성공한 행이 `skipped_done`으로 기록되는지 확인
 3. `logs\history\yyyy\MM\yyyyMMdd_history_success.csv`와 `row_results.csv`가 일관되는지 확인
+4. 같은 팀에서 오늘 이미 `success` 처리된 접수번호가 다른 행/다른 CSV에 다시 나오면 QR 창에 입력하지 않고 `reason=duplicate_receipt_today`로 기록되는지 확인
+5. 같은 접수번호라도 이전 시도가 `failed`뿐이면 사전 스킵하지 않고 다시 QR 처리하는지 확인
+
+## 5-1. 가공성능평가팀 빠른 스킵 테스트
+
+1. `team.processing.stop_file_on_empty_scan_column=true` 상태에서 B1에 유효 접수번호, B2가 빈 값인 CSV로 실행
+2. `row=2`에서 `empty_scan_column`과 `csv_scan_stop`이 남고 같은 CSV의 이후 행은 처리하지 않는지 확인
+3. 정오 이후 실행 시 과거 날짜 폴더 CSV가 선택되지 않는지 확인
+4. 정오 이전 실행 시 과거 날짜 폴더 CSV 중 생성 시간이 17시 이후인 파일만 선택되는지 확인
+5. 당일 날짜 폴더 CSV는 기존 `file_select_policy` 기준으로 처리되는지 확인
 
 ## 6. 실패/재시도 테스트
 
