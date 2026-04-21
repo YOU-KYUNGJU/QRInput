@@ -11,6 +11,8 @@
 - 팀별 스크린샷 저장 경로를 설정 루트 기준 `yyyy\MM\yyyyMMdd` 날짜 폴더로 분리하고 파일서버 UNC 경로로 옮길 수 있게 조정
 - 운영 스크린샷을 로컬 캐시에 먼저 저장하고 `scripts/sync_screenshots.ps1` 로 서버에 별도 동기화하는 방식으로 조정
 - `already_checked` 성공 건은 기본적으로 새 스크린샷을 만들지 않도록 `already_checked_success_screenshot_enabled=false` 설정 추가
+- 가공성능평가팀은 B열 빈칸을 만나면 현재 CSV를 종료하고, 정오 이후 과거 날짜 폴더 CSV를 제외하도록 설정 기반 빠른 스킵 규칙 추가
+- 두 팀 모두 오늘 이미 성공 처리된 접수번호는 QR 창에 다시 입력하지 않고 `duplicate_receipt_today`로 기록하도록 사전 스킵 추가
 
 ## 0.1.0
 - 저장소 초기 구조 생성

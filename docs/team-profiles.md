@@ -57,4 +57,8 @@
 - `team.analysis`: 현재월과 다음월 모두 후보가 없으면 오늘 폴더로 fallback 한다.
 - `team.processing`: `allow_future_folder=false`
 - `team.processing`: `recent_date_folder_count=2`
+- `team.processing`: `stop_file_on_empty_scan_column=true`
+- `team.processing`: `previous_date_scan_before_hour=12`
+- `team.processing`: `previous_date_created_after_hour=17`
+- `team.analysis`, `team.processing`: `skip_today_success_receipt=true`
 - `team.processing`: 현재 날짜 기준으로 가장 가까운 과거 날짜 폴더 2개를 스캔 대상으로 사용한다. 오늘 폴더가 있으면 오늘+직전 날짜, 오늘 폴더가 없으면 가장 최근 2개 날짜 폴더를 사용한다.

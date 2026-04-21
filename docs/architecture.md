@@ -109,3 +109,7 @@
 - 최근 날짜 폴더 수집은 현재월을 먼저 보고, 부족할 때만 직전월을 한 번 더 확인한다.
 - `allow_future_folder=true` 이고 현재 시각이 `cutoff_hour` 이상이면 `root\yyyy\MM` 현재월에서 오늘보다 큰 가장 가까운 `yyyyMMdd` 폴더를 먼저 찾는다.
 - 현재월에 후보가 없을 때만 다음월 `root\yyyy\MM` 폴더를 한 번 더 확인하고, 그래도 없으면 오늘 폴더로 fallback 한다.
+- `previous_date_scan_before_hour`가 설정된 팀은 현재 시각이 해당 시각 이상이면 과거 날짜 폴더의 CSV를 제외한다.
+- `previous_date_created_after_hour`가 설정된 팀은 과거 날짜 폴더 CSV 중 생성 시간이 해당 시각 이상인 파일만 포함한다.
+- `stop_file_on_empty_scan_column=true`인 팀은 스캔 열이 빈 행을 만나면 현재 CSV 파일 처리를 종료하고 다음 파일로 넘어간다.
+- `skip_today_success_receipt=true`인 팀은 오늘 같은 팀에서 이미 성공한 접수번호를 QR 창에 다시 보내지 않고 row result에 스킵으로 기록한다.
