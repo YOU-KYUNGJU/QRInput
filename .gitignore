@@ -9,6 +9,10 @@ runtime/*.lock
 logs/**/*.csv
 logs/**/*.txt
 logs/**/*.png
+logs_server/**/*.csv
+logs_server/**/*.txt
+logs_server/**/*.png
+logs_server/.gitkeep
 dist/
 
 # editors
