@@ -1,5 +1,4 @@
 param(
-    [ValidateSet("all", "analysis", "processing")]
     [string]$Team = "all",
     [string]$ConfigPath = ""
 )
@@ -108,12 +107,34 @@ function Invoke-RobocopySync {
     Write-Host "[$Label] sync_end: exit_code=$exitCode"
 }
 
+function Get-TeamMap {
+    param([hashtable]$Ini)
+
+    $teamMap = [ordered]@{}
+    foreach ($sectionName in $Ini.Keys | Sort-Object) {
+        if ($sectionName -notmatch '^team\.') {
+            continue
+        }
+
+        $alias = $sectionName.Substring(5)
+        $teamMap[$alias] = $sectionName
+    }
+
+    return $teamMap
+}
+
 $resolvedConfigPath = Resolve-ConfigPath -ExplicitPath $ConfigPath
 $ini = Read-IniFile -Path $resolvedConfigPath
 
-$teamMap = [ordered]@{
-    analysis   = "team.analysis"
-    processing = "team.processing"
+$teamMap = Get-TeamMap -Ini $ini
+
+if ($teamMap.Count -eq 0) {
+    throw "team_section_missing: no [team.*] section found in $resolvedConfigPath"
+}
+
+if ($Team -ne "all" -and -not $teamMap.Contains($Team)) {
+    $availableTeams = ($teamMap.Keys -join ", ")
+    throw "unknown_team: $Team | available=$availableTeams"
 }
 
 $selectedTeams = if ($Team -eq "all") { $teamMap.Keys } else { @($Team) }

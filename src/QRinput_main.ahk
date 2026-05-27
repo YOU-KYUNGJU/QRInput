@@ -34,8 +34,7 @@ Main() {
         runId := CreateRunId()
         g_Runtime.runId := runId
 
-        teamSections := ["team.analysis", "team.processing"]
-        for _, section in teamSections {
+        for _, section in cfg._team_sections {
             teamCfg := cfg[section]
             if !IsTrue(teamCfg.enabled)
                 continue

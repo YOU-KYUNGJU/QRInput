@@ -775,8 +775,8 @@ MaskSensitiveDiagnosticText(text) {
     global g_Runtime
     masked := text . ""
 
-    if IsObject(g_Runtime) && IsObject(g_Runtime.cfg) {
-        for _, section in ["team.analysis", "team.processing"] {
+    if IsObject(g_Runtime) && IsObject(g_Runtime.cfg) && IsObject(g_Runtime.cfg._team_sections) {
+        for _, section in g_Runtime.cfg._team_sections {
             if !g_Runtime.cfg.HasKey(section)
                 continue
 
