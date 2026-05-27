@@ -19,8 +19,8 @@ FITI 시험관리시스템 QR 입고 자동화를 `공통 엔진 + 팀별 설정
 ## 실행 방법
 
 1. `config/qr_input.local.ini`를 운영값으로 유지
-2. 루트의 [QRinput_main.ahk](/c:/Users/eye2b/Documents/20260104/QRinput/QRinput_main.ahk) 실행
-3. 또는 [src/QRinput_main.ahk](/c:/Users/eye2b/Documents/20260104/QRinput/src/QRinput_main.ahk) 직접 실행
+2. 루트의 `QRinput_main.ahk` 실행
+3. 또는 `src/QRinput_main.ahk` 직접 실행
 
 ## 빌드
 
@@ -53,7 +53,7 @@ PowerShell에서 아래 실행:
 
 ## 테스트
 
-수동 테스트 절차는 [docs/manual-test-checklist.md](/c:/Users/eye2b/Documents/20260104/QRinput/docs/manual-test-checklist.md)를 기준으로 진행합니다.
+수동 테스트 절차는 `docs/manual-test-checklist.md`를 기준으로 진행합니다.
 
 핵심 검증 항목:
 - 팀별 로그인

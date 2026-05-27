@@ -55,7 +55,7 @@
 2. 기존 스크립트 기준으로 로그인 입력 컨트롤 자동입력 가능
 3. 팀별 로그인 ID/비밀번호는 사용자로부터 확보됨
 4. 보안상 원문 자격증명은 계획 문서에 직접 기록하지 않고 외부 설정 파일로 분리하는 것을 원칙으로 함
-5. 설정 템플릿 파일: [qr_input_config.template.ini](/c:/Users/eye2b/Documents/20260104/QRinput/qr_input_config.template.ini)
+5. 설정 템플릿 파일: `config/qr_input_config.template.ini`
 
 ## 4. 스케줄러 현황
 

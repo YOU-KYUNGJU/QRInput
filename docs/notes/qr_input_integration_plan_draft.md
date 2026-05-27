@@ -107,7 +107,7 @@
 
 1. 팀별 로그인 ID/비밀번호는 코드 본문에 하드코딩하지 않음
 2. 외부 설정 파일에서 읽어오도록 구성
-3. 설정 템플릿은 [qr_input_config.template.ini](/c:/Users/eye2b/Documents/20260104/QRinput/qr_input_config.template.ini) 기준으로 관리
+3. 설정 템플릿은 `config/qr_input_config.template.ini` 기준으로 관리
 
 ## 5. 통합 방식 제안
 
