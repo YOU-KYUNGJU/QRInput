@@ -7,10 +7,23 @@ LoadConfig(path) {
     cfg._path := path
     cfg.system := LoadIniSectionData(iniData, "system")
     cfg.ui := LoadIniSectionData(iniData, "ui")
-    cfg["team.analysis"] := LoadIniSectionData(iniData, "team.analysis")
-    cfg["team.processing"] := LoadIniSectionData(iniData, "team.processing")
+    cfg._team_sections := []
+    for _, sectionName in GetTeamSectionNames(iniData) {
+        cfg[sectionName] := LoadIniSectionData(iniData, sectionName)
+        cfg[sectionName]._section_name := sectionName
+        cfg._team_sections.Push(sectionName)
+    }
     NormalizeConfig(cfg, path)
     return cfg
+}
+
+GetTeamSectionNames(iniData) {
+    sectionNames := []
+    for sectionName, _ in iniData {
+        if RegExMatch(sectionName, "^team\.")
+            sectionNames.Push(sectionName)
+    }
+    return sectionNames
 }
 
 LoadIniSectionData(iniData, section) {
@@ -91,8 +104,8 @@ GetSectionKeys(section) {
     if (section = "ui")
         return ["main_window_x","main_window_y","main_window_w","main_window_h","dpi_scale","login_user_control","login_password_control","login_submit_button","dialog_confirm_button","dialog_post_confirm_delay_ms","dialog_post_confirm_keys","login_post_submit_keys","qr_button_x","qr_button_y","qr_button_click_count","qr_button_wait_ms","qr_verify_controls","checkbox_pixel_x","checkbox_pixel_y","checkbox_checked_color","checkbox_unchecked_color","checkbox_control","save_control","post_save_control","save_result_pixel_x","save_result_pixel_y","save_result_color","save_result_pending_color"]
 
-    if (section = "team.analysis" or section = "team.processing")
-        return ["enabled","team_name","part_name","login_id","login_password","csv_root_path","receipt_mode","receipt_compose_columns","receipt_direct_column","row_scan_column","row_scan_pattern","stop_file_on_empty_scan_column","skip_today_success_receipt","cutoff_hour","allow_future_folder","recent_date_folder_count","file_select_policy","file_created_after_hour","previous_date_scan_before_hour","previous_date_created_after_hour","postprocess_mode","failure_policy","stop_on_check_failure","move_processed_file","processed_file_dir","log_dir","screenshot_dir"]
+    if RegExMatch(section, "^team\.")
+        return ["enabled","team_name","part_name","login_id","login_password","csv_root_path","receipt_mode","receipt_compose_columns","receipt_compose_pad_spec","receipt_direct_column","row_scan_column","row_scan_pattern","stop_file_on_empty_scan_column","skip_today_success_receipt","cutoff_hour","allow_future_folder","future_folder_mode","include_today_folder_after_cutoff","today_file_created_after_hour","recent_date_folder_count","file_select_policy","file_created_after_hour","previous_date_scan_before_hour","previous_date_created_after_hour","postprocess_mode","failure_policy","stop_on_check_failure","move_processed_file","processed_file_dir","log_dir","screenshot_dir","screenshot_sync_dir"]
 
     return []
 }
@@ -106,15 +119,19 @@ NormalizeConfig(ByRef cfg, path) {
         cfg.system[key] := ResolveConfigPath(cfg.system[key], repoRoot)
     }
 
-    for _, section in ["team.analysis", "team.processing"] {
+    for _, section in cfg._team_sections {
         teamCfg := cfg[section]
-        for _, key in ["csv_root_path","processed_file_dir","log_dir","screenshot_dir"] {
+        for _, key in ["csv_root_path","processed_file_dir","log_dir","screenshot_dir","screenshot_sync_dir"] {
             teamCfg[key] := ResolveConfigPath(teamCfg[key], repoRoot)
         }
         if (teamCfg.stop_file_on_empty_scan_column = "")
             teamCfg.stop_file_on_empty_scan_column := "false"
         if (teamCfg.skip_today_success_receipt = "")
             teamCfg.skip_today_success_receipt := "false"
+        if (teamCfg.future_folder_mode = "")
+            teamCfg.future_folder_mode := "nearest_future"
+        if (teamCfg.include_today_folder_after_cutoff = "")
+            teamCfg.include_today_folder_after_cutoff := "false"
         if (teamCfg.recent_date_folder_count = "")
             teamCfg.recent_date_folder_count := "1"
         cfg[section] := teamCfg

@@ -342,13 +342,8 @@ VerifyReceiptEcho(receiptNo, sysCfg, uiCfg) {
     started := A_TickCount
 
     while (ElapsedMs(started) <= timeoutMs) {
-        echoed := "@"
-        for _, controlName in controls {
-            controlText := ""
-            ControlGetText, controlText, % Trim(controlName), % sysCfg.qr_window_title
-            echoed .= Trim(controlText)
-        }
-        echoed .= "@"
+        if !TryReadQrVerifyEcho(sysCfg, controls, echoed)
+            return false
 
         if (echoed = receiptNo)
             return true
@@ -357,6 +352,30 @@ VerifyReceiptEcho(receiptNo, sysCfg, uiCfg) {
     }
 
     return false
+}
+
+TryReadQrVerifyEcho(sysCfg, controls, ByRef echoed) {
+    echoed := "@"
+
+    if !WinExist(sysCfg.qr_window_title) {
+        AppendDebug("qr_verify_window_missing", DescribeOpenFitiWindows(sysCfg))
+        return false
+    }
+
+    for _, controlName in controls {
+        controlName := Trim(controlName)
+        controlText := ""
+        try {
+            ControlGetText, controlText, % controlName, % sysCfg.qr_window_title
+        } catch e {
+            AppendDebug("qr_verify_read_error", controlName . "|" . DescribeException(e) . "|" . DescribeOpenFitiWindows(sysCfg))
+            return false
+        }
+        echoed .= Trim(controlText)
+    }
+
+    echoed .= "@"
+    return true
 }
 
 GetCheckboxState(uiCfg) {
@@ -775,8 +794,8 @@ MaskSensitiveDiagnosticText(text) {
     global g_Runtime
     masked := text . ""
 
-    if IsObject(g_Runtime) && IsObject(g_Runtime.cfg) {
-        for _, section in ["team.analysis", "team.processing"] {
+    if IsObject(g_Runtime) && IsObject(g_Runtime.cfg) && IsObject(g_Runtime.cfg._team_sections) {
+        for _, section in g_Runtime.cfg._team_sections {
             if !g_Runtime.cfg.HasKey(section)
                 continue
 

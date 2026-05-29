@@ -27,15 +27,14 @@ Main() {
         cfg := LoadConfig(configPath)
         g_Runtime.cfg := cfg
 
-        InitializeHistoryStore(cfg.system.history_dir)
+        InitializeHistoryStore(cfg.system.history_dir, BuildHistoryTeamProfiles(cfg))
         AcquireRunLock(cfg.system)
         lockAcquired := true
 
         runId := CreateRunId()
         g_Runtime.runId := runId
 
-        teamSections := ["team.analysis", "team.processing"]
-        for _, section in teamSections {
+        for _, section in cfg._team_sections {
             teamCfg := cfg[section]
             if !IsTrue(teamCfg.enabled)
                 continue
@@ -226,7 +225,7 @@ ProcessCsvFile(csvPath, teamCfg, sysCfg, uiCfg, runId) {
             continue
         }
 
-        if ShouldSkipTodaySuccessfulReceipt(teamCfg, sysCfg.history_dir, teamCfg.team_name, receipt.value) {
+        if ShouldSkipTodaySuccessfulReceipt(teamCfg, sysCfg.history_dir, receipt.value) {
             duplicateReceiptCount += 1
             AppendDebug("row_skipped_done", teamCfg.team_name . "|" . csvPath . "|row=" . rowNo . "|receipt=" . receipt.value . "|reason=duplicate_receipt_today")
             skippedResult := CreateBasicResult("skipped_done", "", "duplicate_receipt_today")
@@ -242,7 +241,7 @@ ProcessCsvFile(csvPath, teamCfg, sysCfg, uiCfg, runId) {
 
         if (result.status = "success") {
             g_Runtime.currentTeamStats.success_count += 1
-            AppendSuccessHistory(sysCfg.history_dir, teamCfg.team_name, csvPath, rowNo, receipt.value, uniqueKey)
+            AppendSuccessHistory(sysCfg.history_dir, teamCfg.team_name, teamCfg.part_name, csvPath, rowNo, receipt.value, uniqueKey)
         } else if (result.status = "failed") {
             g_Runtime.currentTeamStats.failure_count += 1
         } else if (result.status = "wait_next_schedule") {
@@ -260,10 +259,10 @@ ShouldStopFileOnEmptyScanColumn(teamCfg, eligibility) {
     return IsTrue(teamCfg.stop_file_on_empty_scan_column) && (eligibility.reason = "empty_scan_column")
 }
 
-ShouldSkipTodaySuccessfulReceipt(teamCfg, historyDir, teamName, receiptNo) {
+ShouldSkipTodaySuccessfulReceipt(teamCfg, historyDir, receiptNo) {
     if !IsTrue(teamCfg.skip_today_success_receipt)
         return false
-    return IsReceiptSuccessfulToday(historyDir, teamName, receiptNo)
+    return IsReceiptSuccessfulToday(historyDir, teamCfg.team_name, teamCfg.part_name, receiptNo)
 }
 
 BuildRowSkipDebugMessage(teamName, csvPath, rowNo, eligibility) {

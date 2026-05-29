@@ -6,26 +6,27 @@
 ## 2. 레이어
 ### 2.1 Runner
 - 실행 잠금 확인
-- 설정 파일 목록 로드
-- 팀별 순차 실행
+- 설정 파일 로드
+- `team.*` 섹션 순차 실행
 - 종료 코드 반환
 
 ### 2.2 Team Profile Loader
 - ini 로드
+- `team.*` 섹션 동적 수집
 - 필수값 검증
 - 기본값 보정
 - 민감정보 분리 여부 확인
 
 ### 2.3 CSV Scanner
 - 대상 날짜 폴더 계산
-- 파일 선별 정책 적용
+- 파일 선택 정책 적용
 - CSV 목록 반환
 
 ### 2.4 Receipt Extractor
 - direct 모드
 - compose 모드
-- 정규식 검증
-- 행 스킵 사유 반환
+- 형식값 검증
+- 스킵 사유 반환
 
 ### 2.5 FITI Session Manager
 - 기존 FITI 종료
@@ -35,17 +36,17 @@
 - 세션 끊김 감지/재로그인
 
 ### 2.6 QR Executor
-- 행 입력
+- 접수번호 입력
 - 입력 검증
 - 체크 박스 보정
-- 저장 수행
-- 저장 확인
+- 저장 실행
+- 저장 결과 확인
 
 ### 2.7 History Store
 - 성공 이력 조회
 - 고유 키 생성
 - 중복 처리 방지
-- 재실행 복구
+- 당일 중복 방지
 
 ### 2.8 Logger
 - run summary csv
@@ -53,7 +54,7 @@
 - debug txt(optional)
 - screenshot path 기록
 - CSV 로그는 `yyyy\MM\yyyyMMdd_*` 파일명으로 월별 폴더에 저장
-- 팀별 screenshot root 아래 `yyyy\MM\yyyyMMdd` 날짜 폴더 생성
+- 스크린샷은 `screenshot_dir\yyyy\MM\yyyyMMdd` 하위에 저장
 
 ## 3. 처리 상태 모델
 행 단위 상태:
@@ -84,10 +85,10 @@
 ## 4. 실행 흐름
 1. lock 확인
 2. 설정 목록 로드
-3. 팀별 순차 실행
+3. `team.*` 섹션 순차 실행
 4. CSV 스캔
 5. 파일이 없으면 팀 세션 시작 없이 다음 팀 진행
-6. FITI 새 실행
+6. FITI 실행
 7. 파일별 행 처리
 8. 이력 기록
 9. FITI 종료
@@ -96,20 +97,20 @@
 
 ## 5. 설계 원칙
 1. 팀 차이는 config로만 주입
-2. 공통 함수는 분기보다 전략 선택 구조 사용
-3. 실패는 종료보다 기록과 복구 우선
+2. 공통 함수는 팀명 분기보다 설정 기반 구조 사용
+3. 실패 시 종료보다 기록과 복구 우선
 4. 운영 로그와 디버그 로그 분리
 5. 성공 이력 기반으로 미처리 건만 재시도
 
 ## CSV Scanner Rule
 - 오늘 날짜 폴더를 최우선으로 찾는다.
-- 탐색 순서는 `root\yyyyMMdd` -> `root\yyyy\MM\yyyyMMdd` -> 재귀 날짜 폴더 -> root csv fallback 이다.
+- 탐색 순서는 `root\yyyyMMdd` -> `root\yyyy\MM\yyyyMMdd` -> 과거 날짜 폴더 -> root csv fallback 이다.
 - root 바로 아래 csv는 날짜 폴더를 찾지 못했을 때만 사용한다.
 - `recent_date_folder_count > 1` 이면 현재 날짜 기준 가장 가까운 과거 날짜 폴더 N개를 모아 각 폴더의 csv를 함께 스캔한다.
-- 최근 날짜 폴더 수집은 현재월을 먼저 보고, 부족할 때만 직전월을 한 번 더 확인한다.
+- 최근 날짜 폴더 수집은 현재월을 먼저 보고, 부족할 때만 직전월을 추가 확인한다.
 - `allow_future_folder=true` 이고 현재 시각이 `cutoff_hour` 이상이면 `root\yyyy\MM` 현재월에서 오늘보다 큰 가장 가까운 `yyyyMMdd` 폴더를 먼저 찾는다.
 - 현재월에 후보가 없을 때만 다음월 `root\yyyy\MM` 폴더를 한 번 더 확인하고, 그래도 없으면 오늘 폴더로 fallback 한다.
-- `previous_date_scan_before_hour`가 설정된 팀은 현재 시각이 해당 시각 이상이면 과거 날짜 폴더의 CSV를 제외한다.
-- `previous_date_created_after_hour`가 설정된 팀은 과거 날짜 폴더 CSV 중 생성 시간이 해당 시각 이상인 파일만 포함한다.
-- `stop_file_on_empty_scan_column=true`인 팀은 스캔 열이 빈 행을 만나면 현재 CSV 파일 처리를 종료하고 다음 파일로 넘어간다.
-- `skip_today_success_receipt=true`인 팀은 오늘 같은 팀에서 이미 성공한 접수번호를 QR 창에 다시 보내지 않고 row result에 스킵으로 기록한다.
+- `previous_date_scan_before_hour`가 설정된 팀은 해당 시각 이후 과거 날짜 폴더 CSV를 제외한다.
+- `previous_date_created_after_hour`가 설정된 팀은 과거 날짜 폴더 CSV 중 생성 시각이 해당 시각 이상인 파일만 포함한다.
+- `stop_file_on_empty_scan_column=true`이면 스캔 값이 빈 행을 만나면 현재 CSV 처리를 종료하고 다음 파일로 넘어간다.
+- `skip_today_success_receipt=true`이면 같은 날짜의 같은 팀/파트에서 이미 성공한 접수번호는 QR 창에 다시 보내지 않고 row result에 스킵으로 기록한다.
