@@ -113,4 +113,4 @@
 - `previous_date_scan_before_hour`가 설정된 팀은 해당 시각 이후 과거 날짜 폴더 CSV를 제외한다.
 - `previous_date_created_after_hour`가 설정된 팀은 과거 날짜 폴더 CSV 중 생성 시각이 해당 시각 이상인 파일만 포함한다.
 - `stop_file_on_empty_scan_column=true`이면 스캔 값이 빈 행을 만나면 현재 CSV 처리를 종료하고 다음 파일로 넘어간다.
-- `skip_today_success_receipt=true`이면 같은 날짜에 이미 성공한 접수번호는 QR 창에 다시 보내지 않고 row result에 스킵으로 기록한다.
+- `skip_today_success_receipt=true`이면 같은 날짜의 같은 팀/파트에서 이미 성공한 접수번호는 QR 창에 다시 보내지 않고 row result에 스킵으로 기록한다.

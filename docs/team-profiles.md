@@ -1,79 +1,90 @@
 # 팀 프로필
 
-## 분석화학평가팀
-- 파트: pH/폼알데하이드
-- 접수번호 생성: compose
-- 기본 조합: A + D + B
-- 행 스캔 기준: A열
-- 날짜 cutoff: 오후 2시 기준
-- 미래 날짜 폴더 허용: 예
-- 실패 정책: continue
-- 완료 파일 이동: 아니오
-- 원본 CSV 유지: 예
+## 분석화학평가팀 pH/폼알데하이드
+- 파트: `pH/폼알데하이드`
+- 접수번호 생성: `compose`
+- 조합 순서: `A + D + B`
+- compose zero-padding: `receipt_compose_pad_spec=B:5`
+- 행 스캔 기준 열: `A`
+- 행 스캔 패턴: `^[A-Z][0-9]{3}$`
+- cutoff: `14`
+- 미래 날짜 폴더 사용: `true`
+- 미래 폴더 모드: `next_business_day`
+- cutoff 이후 오늘 폴더 신규 파일 추가 수집: `true`
+- 오늘 폴더 생성 시각 기준: `14`
+- 최근 날짜 폴더 개수: `1`
+- 파일 선택 정책: `all_csv_in_target_folder`
+- 실패 정책: `continue`
+- 완료 파일 이동: 사용 안 함
 
-## 분석화학평가팀
-- 파트: 아릴아민
-- 접수번호 생성: compose
-- 기본 조합: A + D + B
-- 행 스캔 기준: A열
-- 날짜 cutoff: 오후 2시 기준
-- 미래 날짜 폴더 허용: 예
-- 실패 정책: continue
-- 완료 파일 이동: 아니오
-- 원본 CSV 유지: 예
+## 분석화학평가팀 아릴아민
+- 파트: `아릴아민`
+- 접수번호 생성: `compose`
+- 조합 순서: `A + D + B`
+- compose zero-padding: `receipt_compose_pad_spec=B:5`
+- 행 스캔 기준 열: `A`
+- 행 스캔 패턴: `^[A-Z][0-9]{3}$`
+- cutoff: `14`
+- 미래 날짜 폴더 사용: `true`
+- 미래 폴더 모드: `next_business_day`
+- cutoff 이후 오늘 폴더 신규 파일 추가 수집: `true`
+- 오늘 폴더 생성 시각 기준: `14`
+- 최근 날짜 폴더 개수: `1`
+- 파일 선택 정책: `all_csv_in_target_folder`
+- 실패 정책: `continue`
+- 완료 파일 이동: 사용 안 함
 
 ## 가공성능평가팀
-- 파트: 수축률
-- 접수번호 생성: direct
-- 기본 사용 열: B열
-- 행 스캔 기준: B열
-- 행 유효 패턴: `@.*@`
-- 날짜 cutoff: 오전 10시 기준
-- 미래 날짜 폴더 허용: 운영값으로 선택
-- 최근 날짜 폴더 스캔: 현재 날짜 기준 최근 2개 `yyyyMMdd` 폴더
-- 실패 정책: continue
+- 파트: `수축율`
+- 접수번호 생성: `direct`
+- 직접 사용 열: `B`
+- 행 스캔 기준 열: `B`
+- 행 스캔 패턴: `^@[A-Z][A-Z0-9]+@$`
+- cutoff: `10`
+- 미래 날짜 폴더 사용: `false`
+- 미래 폴더 모드: `nearest_future`
+- 최근 날짜 폴더 개수: `2`
+- 파일 선택 정책: `created_after_hour`
+- 과거 날짜 스캔 허용 시각: `12` 이전
+- 과거 날짜 파일 생성 시각 조건: `17` 이후
+- 빈 스캔 열에서 파일 처리 중단: `true`
+- 실패 정책: `continue`
 - 완료 파일 이동: 선택 가능
-- 원본 CSV 유지: 예
 
 ## 공통 운영 정책
-1. 실행 시작 전에 기존 FITI가 있으면 종료
-2. 팀 작업 종료 후 FITI 종료
-3. 세션 복구 시 자동 재로그인 최대 3회
-4. 행 처리 실패 시 최대 3회 재시도
-5. 치명적 예외가 아니면 전체 프로그램은 멈추지 않음
-6. 성공/실패 모두 CSV 로그와 스크린샷 기록
+1. 실행 시작 전에 기존 FITI가 떠 있으면 종료한다.
+2. 각 팀 작업 종료 후 FITI를 종료한다.
+3. 세션 복구를 위한 자동 재로그인은 최대 3회 시도한다.
+4. 각 행 처리 실패는 최대 3회 재시도한다.
+5. 치명적 예외가 아니면 프로그램 전체를 멈추지 않고 다음 행 또는 다음 파일로 진행한다.
+6. 성공과 실패 모두 CSV 로그와 스크린샷으로 남긴다.
 
-## 팀별 설정으로만 관리할 항목
+## 설정으로만 관리할 항목
 - 계정
-- csv_root_path
-- cutoff_hour
-- file_select_policy
-- postprocess_mode
-- receipt extraction mode
-- failure policy
-- screenshot/log path
-- `screenshot_dir` 는 로컬 캐시 루트 또는 파일서버 루트 경로를 넣고 실제 저장은 `yyyy\MM\yyyyMMdd` 하위로 분기
-- 서버 직저장이 아니라 로컬 캐시 후 동기화가 필요할 때만 `screenshot_sync_dir` 를 두고 `scripts/sync_screenshots.ps1` 로 동기화
-- `already_checked_success_screenshot_enabled` 로 이미 체크된 success 캡처 여부를 공통 제어
-- checkbox/save 판단 기준
+- `csv_root_path`
+- `cutoff_hour`
+- `allow_future_folder`
+- `future_folder_mode`
+- `include_today_folder_after_cutoff`
+- `today_file_created_after_hour`
+- `recent_date_folder_count`
+- `file_select_policy`
+- `receipt_mode`
+- `receipt_compose_pad_spec`
+- 실패 정책
+- 로그 경로
+- 스크린샷 경로
 
-## CSV Scanner Rule
-- 공통 csv 탐색은 오늘 날짜 폴더 우선이다.
-- root 바로 아래 csv는 날짜 폴더가 없을 때만 마지막 fallback으로 사용한다.
-
-## Team Folder Rules
-- `team.analysis`: `cutoff_hour=14`, `allow_future_folder=true`
-- `team.analysis`: `recent_date_folder_count=1`
-- `team.analysis`: cutoff 이후에는 `root\yyyy\MM` 현재월에서 오늘보다 큰 가장 가까운 `yyyyMMdd` 폴더를 먼저 찾고, 없으면 다음월 `root\yyyy\MM` 폴더에서 다시 찾는다.
-- `team.analysis`: 현재월과 다음월 모두 후보가 없으면 오늘 폴더로 fallback 한다.
-- `team.analysis_arylamine`: `cutoff_hour=14`, `allow_future_folder=true`
-- `team.analysis_arylamine`: `recent_date_folder_count=1`
-- `team.analysis_arylamine`: cutoff 이후에는 `root\yyyy\MM` 현재월에서 오늘보다 큰 가장 가까운 `yyyyMMdd` 폴더를 먼저 찾고, 없으면 다음월 `root\yyyy\MM` 폴더에서 다시 찾는다.
-- `team.analysis_arylamine`: 현재월과 다음월 모두 후보가 없으면 오늘 폴더로 fallback 한다.
-- `team.processing`: `allow_future_folder=false`
-- `team.processing`: `recent_date_folder_count=2`
-- `team.processing`: `stop_file_on_empty_scan_column=true`
-- `team.processing`: `previous_date_scan_before_hour=12`
-- `team.processing`: `previous_date_created_after_hour=17`
-- `team.analysis`, `team.analysis_arylamine`, `team.processing`: `skip_today_success_receipt=true`
-- `team.processing`: 현재 날짜 기준으로 가장 가까운 과거 날짜 폴더 2개를 스캔 대상으로 사용한다. 오늘 폴더가 있으면 오늘+직전 날짜, 오늘 폴더가 없으면 가장 최근 2개 날짜 폴더를 사용한다.
+## 폴더 선택 규칙
+- 공통 기본값은 오늘 날짜 폴더 우선이다.
+- 날짜 폴더 탐색 순서는 `root\yyyyMMdd` -> `root\yyyy\MM\yyyyMMdd` -> 재귀 탐색 -> root CSV fallback 이다.
+- `allow_future_folder=true` 이고 cutoff 이후이면 미래 날짜 폴더를 찾는다.
+- `future_folder_mode=nearest_future` 이면 오늘보다 큰 가장 가까운 날짜 폴더를 우선 선택한다.
+- `future_folder_mode=next_business_day` 이면 다음 평일 날짜 폴더를 우선 선택한다.
+- `include_today_folder_after_cutoff=true` 이면 cutoff 이후에도 오늘 날짜 폴더를 함께 훑되, `today_file_created_after_hour` 이상에 생성된 CSV만 추가 수집한다.
+- `next_business_day` 모드에서 대상 폴더가 없으면 기존 미래 폴더 탐색 또는 오늘 폴더 fallback 으로 내려간다.
+- `recent_date_folder_count > 1` 이면 오늘 기준 최근 날짜 폴더 여러 개를 모아 CSV를 수집한다.
+- `previous_date_scan_before_hour` 이 설정되면 해당 시각 이후 과거 날짜 폴더 CSV는 제외한다.
+- `previous_date_created_after_hour` 이 설정되면 과거 날짜 폴더 CSV 중 생성 시각이 기준 시각 이상인 파일만 포함한다.
+- `stop_file_on_empty_scan_column=true` 이면 빈 스캔 열을 만나면 현재 CSV 처리를 종료하고 다음 파일로 넘어간다.
+- `skip_today_success_receipt=true` 이면 같은 날짜의 같은 팀/파트에서 이미 성공한 접수번호는 `duplicate_receipt_today` 로 스킵한다.

@@ -69,15 +69,18 @@ ExtractReceipt(rowObj, teamCfg) {
 
     if (teamCfg.receipt_mode = "compose") {
         parts := StrSplit(teamCfg.receipt_compose_columns, ",")
+        padSpecMap := ParseComposePadSpec(teamCfg.receipt_compose_pad_spec)
         composed := "@"
 
         for _, partCol in parts {
-            cellValue := NormalizeCellValue(GetRowValue(rowObj, Trim(partCol)))
+            partCol := Trim(partCol)
+            cellValue := NormalizeCellValue(GetRowValue(rowObj, partCol))
             if (cellValue = "") {
                 result.status := "invalid"
-                result.reason := "compose_missing_" . Trim(partCol)
+                result.reason := "compose_missing_" . partCol
                 return result
             }
+            cellValue := ApplyComposePadSpec(cellValue, partCol, padSpecMap)
             composed .= cellValue
         }
 
@@ -110,4 +113,51 @@ GetRowValue(rowObj, columnName) {
 NormalizeCellValue(value) {
     value := Trim(value, " `t`r`n")
     return ToUpper(value)
+}
+
+ParseComposePadSpec(specText) {
+    specMap := {}
+    specText := Trim(specText)
+    if (specText = "")
+        return specMap
+
+    entries := StrSplit(specText, ",")
+    for _, entry in entries {
+        entry := Trim(entry)
+        if (entry = "")
+            continue
+
+        parts := StrSplit(entry, ":")
+        if (parts.Length() != 2)
+            continue
+
+        columnName := ToUpper(Trim(parts[1]))
+        widthValue := ToInt(Trim(parts[2]), 0)
+        if (columnName = "" || widthValue <= 0)
+            continue
+
+        specMap[columnName] := widthValue
+    }
+    return specMap
+}
+
+ApplyComposePadSpec(cellValue, columnName, padSpecMap) {
+    columnName := ToUpper(Trim(columnName))
+    if !IsObject(padSpecMap) || !padSpecMap.HasKey(columnName)
+        return cellValue
+
+    targetWidth := ToInt(padSpecMap[columnName], 0)
+    if (targetWidth <= 0)
+        return cellValue
+
+    if !RegExMatch(cellValue, "^\d+$")
+        return cellValue
+
+    if (StrLen(cellValue) >= targetWidth)
+        return cellValue
+
+    padding := ""
+    Loop, % targetWidth - StrLen(cellValue)
+        padding .= "0"
+    return padding . cellValue
 }

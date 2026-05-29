@@ -73,20 +73,21 @@ CreateRunId() {
 
 CollectCsvFiles(teamCfg, ByRef targetDir := "") {
     files := []
-    targetDirs := ResolveTargetCsvDirectories(teamCfg)
-    targetDir := BuildTargetDirDebugText(targetDirs)
-    if (targetDirs.Length() = 0)
+    targetEntries := ResolveTargetCsvDirectories(teamCfg)
+    targetDir := BuildTargetDirDebugText(targetEntries)
+    if (targetEntries.Length() = 0)
         return files
 
     seen := {}
-    for _, dirPath in targetDirs {
+    for _, targetEntry in targetEntries {
+        dirPath := IsObject(targetEntry) ? targetEntry.path : targetEntry
         if (dirPath = "" || !DirExists(dirPath))
             continue
 
         Loop, Files, % dirPath "\*.csv", F
         {
             csvPath := A_LoopFileFullPath
-            if !ShouldIncludeCsvFile(csvPath, teamCfg)
+            if !ShouldIncludeCsvFile(csvPath, teamCfg, targetEntry)
                 continue
 
             key := ToLower(csvPath)
@@ -104,14 +105,19 @@ ResolveTargetCsvDirectories(teamCfg) {
     dirs := []
     recentCount := ToInt(teamCfg.recent_date_folder_count, 1)
     if (recentCount > 1) {
-        dirs := FindRecentDateFolders(teamCfg.csv_root_path, recentCount)
+        dirs := WrapTargetDirectoryPaths(FindRecentDateFolders(teamCfg.csv_root_path, recentCount), "recent_date_folder")
         if (dirs.Length() > 0)
             return dirs
     }
 
+    todayDir := ResolveTodayCsvDirectory(teamCfg.csv_root_path)
     singleDir := ResolveTargetCsvDirectory(teamCfg)
     if (singleDir != "")
-        dirs.Push(singleDir)
+        dirs.Push({path: singleDir, role: "primary_target"})
+
+    if (ShouldIncludeTodayFolderAfterCutoff(teamCfg, singleDir, todayDir))
+        dirs.Push({path: todayDir, role: "today_created_after_cutoff"})
+
     return dirs
 }
 
@@ -121,23 +127,10 @@ ResolveTargetCsvDirectory(teamCfg) {
         return ""
 
     FormatTime, today,, yyyyMMdd
-    year := SubStr(today, 1, 4)
-    month := SubStr(today, 5, 2)
-    cutoffHour := ToInt(teamCfg.cutoff_hour, -1)
-    FormatTime, currentHour,, HH
+    foundToday := ResolveTodayCsvDirectory(root, today)
 
-    directToday := root "\" today
-    nestedToday := root "\" year "\" month "\" today
-    foundToday := ""
-    if DirExists(directToday)
-        foundToday := directToday
-    else if DirExists(nestedToday)
-        foundToday := nestedToday
-    else
-        foundToday := FindDateFolderRecursive(root, today)
-
-    if (IsTrue(teamCfg.allow_future_folder) && cutoffHour >= 0 && currentHour + 0 >= cutoffHour) {
-        futureDir := FindNearestFutureDateFolder(root, today)
+    if IsFutureFolderWindowActive(teamCfg) {
+        futureDir := ResolveFutureTargetCsvDirectory(root, today, teamCfg)
         if (futureDir != "")
             return futureDir
     }
@@ -151,9 +144,64 @@ ResolveTargetCsvDirectory(teamCfg) {
     return root
 }
 
+ResolveTodayCsvDirectory(rootDir, todayYmd := "") {
+    if (rootDir = "" || !DirExists(rootDir))
+        return ""
+
+    if (todayYmd = "")
+        FormatTime, todayYmd,, yyyyMMdd
+
+    year := SubStr(todayYmd, 1, 4)
+    month := SubStr(todayYmd, 5, 2)
+    directToday := rootDir "\" todayYmd
+    nestedToday := rootDir "\" year "\" month "\" todayYmd
+
+    if DirExists(directToday)
+        return directToday
+    if DirExists(nestedToday)
+        return nestedToday
+    return FindDateFolderRecursive(rootDir, todayYmd)
+}
+
+IsFutureFolderWindowActive(teamCfg) {
+    if !IsTrue(teamCfg.allow_future_folder)
+        return false
+
+    cutoffHour := ToInt(teamCfg.cutoff_hour, -1)
+    if (cutoffHour < 0)
+        return false
+
+    FormatTime, currentHour,, HH
+    return (currentHour + 0 >= cutoffHour)
+}
+
+ShouldIncludeTodayFolderAfterCutoff(teamCfg, primaryDir, todayDir) {
+    if !IsTrue(teamCfg.include_today_folder_after_cutoff)
+        return false
+    if !IsFutureFolderWindowActive(teamCfg)
+        return false
+    if (todayDir = "" || !DirExists(todayDir))
+        return false
+    if (primaryDir = "")
+        return true
+    return (ToLower(primaryDir) != ToLower(todayDir))
+}
+
+ResolveFutureTargetCsvDirectory(rootDir, todayYmd, teamCfg) {
+    mode := ToLower(Trim(teamCfg.future_folder_mode))
+    if (mode = "next_business_day") {
+        futureDir := FindNextBusinessDayFolder(rootDir, todayYmd)
+        if (futureDir != "")
+            return futureDir
+    }
+
+    return FindNearestFutureDateFolder(rootDir, todayYmd)
+}
+
 BuildTargetDirDebugText(targetDirs) {
     text := ""
-    for _, dirPath in targetDirs {
+    for _, dirEntry in targetDirs {
+        dirPath := IsObject(dirEntry) ? dirEntry.path : dirEntry
         if (dirPath = "")
             continue
         if (text != "")
@@ -161,6 +209,16 @@ BuildTargetDirDebugText(targetDirs) {
         text .= dirPath
     }
     return text
+}
+
+WrapTargetDirectoryPaths(dirPaths, role) {
+    entries := []
+    for _, dirPath in dirPaths {
+        if (dirPath = "")
+            continue
+        entries.Push({path: dirPath, role: role})
+    }
+    return entries
 }
 
 HasDirectCsvFiles(dirPath) {
@@ -220,6 +278,40 @@ FindNearestFutureDateFolder(rootDir, todayYmd) {
     nextMonth := SubStr(nextMonthStamp, 5, 2)
 
     return FindNearestFutureDateFolderInMonth(rootDir "\" nextYear "\" nextMonth, todayYmd)
+}
+
+FindNextBusinessDayFolder(rootDir, todayYmd) {
+    nextYmd := GetNextBusinessDayYmd(todayYmd)
+    if (nextYmd = "")
+        return ""
+
+    year := SubStr(nextYmd, 1, 4)
+    month := SubStr(nextYmd, 5, 2)
+
+    directPath := rootDir "\" nextYmd
+    nestedPath := rootDir "\" year "\" month "\" nextYmd
+    if DirExists(directPath)
+        return directPath
+    if DirExists(nestedPath)
+        return nestedPath
+
+    return FindDateFolderRecursive(rootDir, nextYmd)
+}
+
+GetNextBusinessDayYmd(todayYmd) {
+    probeStamp := todayYmd . "000000"
+    Loop, 10 {
+        EnvAdd, probeStamp, 1, Days
+        probeYmd := SubStr(probeStamp, 1, 8)
+        if !IsWeekendYmd(probeYmd)
+            return probeYmd
+    }
+    return ""
+}
+
+IsWeekendYmd(ymd) {
+    FormatTime, dayOfWeek, % ymd, WDay
+    return (dayOfWeek = 1 || dayOfWeek = 7)
 }
 
 FindNearestFutureDateFolderInMonth(monthDir, todayYmd) {
@@ -287,10 +379,16 @@ BuildSortedDateKeyList(dateMap, order := "A") {
     return keyList
 }
 
-ShouldIncludeCsvFile(csvPath, teamCfg) {
+ShouldIncludeCsvFile(csvPath, teamCfg, targetEntry := "") {
     previousDatePolicy := EvaluatePreviousDateCsvPolicy(csvPath, teamCfg)
     if !previousDatePolicy.should_include {
         AppendDebug("csv_file_skipped", teamCfg.team_name . "|" . csvPath . "|reason=" . previousDatePolicy.reason)
+        return false
+    }
+
+    targetPolicy := EvaluateTargetEntryCsvPolicy(csvPath, teamCfg, targetEntry)
+    if !targetPolicy.should_include {
+        AppendDebug("csv_file_skipped", teamCfg.team_name . "|" . csvPath . "|reason=" . targetPolicy.reason)
         return false
     }
 
@@ -307,6 +405,36 @@ ShouldIncludeCsvFile(csvPath, teamCfg) {
         }
     }
     return true
+}
+
+EvaluateTargetEntryCsvPolicy(csvPath, teamCfg, targetEntry) {
+    result := {should_include: true, reason: ""}
+    if !IsObject(targetEntry)
+        return result
+
+    role := ToLower(Trim(targetEntry.role))
+    if (role != "today_created_after_cutoff")
+        return result
+
+    createdAfterHour := ResolveTodayCreatedAfterHour(teamCfg)
+    if (createdAfterHour < 0)
+        return result
+
+    FormatTime, todayYmd,, yyyyMMdd
+    thresholdStamp := todayYmd . Format("{:02}", createdAfterHour + 0) . "0000"
+    FileGetTime, createdTime, %csvPath%, C
+    if (createdTime < thresholdStamp) {
+        result.should_include := false
+        result.reason := "today_created_before_cutoff"
+    }
+    return result
+}
+
+ResolveTodayCreatedAfterHour(teamCfg) {
+    createdAfterHour := ToInt(teamCfg.today_file_created_after_hour, -1)
+    if (createdAfterHour >= 0)
+        return createdAfterHour
+    return ToInt(teamCfg.cutoff_hour, -1)
 }
 
 EvaluatePreviousDateCsvPolicy(csvPath, teamCfg) {

@@ -65,7 +65,7 @@
 디버그 txt의 로그인 관련 텍스트는 계정/비밀번호를 마스킹한다.
 CSV 선택 경로는 `team_file_selected`, 파일 단위 집계는 `csv_scan_begin`/`csv_scan_end`로 남긴다.
 행이 처리 대상에서 빠진 이유는 `row_skipped`, 접수번호 추출 실패는 `row_invalid`, 기존 성공 이력 스킵은 `row_skipped_done`으로 남긴다.
-오늘 같은 팀에서 이미 성공한 접수번호를 사전 스킵한 행은 `status=skipped_done`, `reason=duplicate_receipt_today`로 `row_results.csv`에 남긴다.
+오늘 같은 팀/파트에서 이미 성공한 접수번호를 사전 스킵한 행은 `status=skipped_done`, `reason=duplicate_receipt_today`로 `row_results.csv`에 남긴다.
 빈 스캔 열을 만나 파일 처리를 종료한 경우 debug 로그에 `csv_scan_stop`을 남긴다.
 
 ## 2. 고유 키 원칙
@@ -73,6 +73,8 @@ CSV 선택 경로는 `team_file_selected`, 파일 단위 집계는 `csv_scan_beg
 `team + source_file + row_no + receipt_no`
 
 receipt_no가 절대 유일하다고 확인되기 전까지는 source_file과 row_no를 포함한다.
+같은 날짜의 사전 중복 스킵(`duplicate_receipt_today`)은 `team_name + part_name + receipt_no` 범위로 판단한다.
+`history_success.csv`에는 part 컬럼을 추가하지 않고 `source_file` 경로를 현재 팀 설정과 대조해 파트를 복원한다.
 
 ## 3. 상태값
 - success
